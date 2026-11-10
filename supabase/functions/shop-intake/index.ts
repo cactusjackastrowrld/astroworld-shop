@@ -1,10 +1,18 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
-const siteOrigin = Deno.env.get("SITE_ORIGIN") || "https://cactusastrowrld.github.io";
+const siteOrigin = Deno.env.get("SITE_ORIGIN") || "https://cactusjackastrowrld.github.io";
+
+function isAllowedOrigin(origin: string | null): boolean {
+  if (!origin || origin === "null") return true;
+  if (origin === siteOrigin) return true;
+  if (origin === "https://cactusjackastrowrld.github.io") return true;
+  if (origin === "https://cactusastrowrld.github.io") return true;
+  return false;
+}
 
 function getCorsHeaders(origin: string | null) {
-  const allowed = origin === siteOrigin ? siteOrigin : siteOrigin;
+  const allowed = isAllowedOrigin(origin) && origin && origin !== "null" ? origin : siteOrigin;
   return {
     "Access-Control-Allow-Origin": allowed,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -79,7 +87,7 @@ serve(async (req) => {
   }
 
   // 1. Origin verification (allow siteOrigin and local testing)
-  if (origin && origin !== siteOrigin && origin !== "null") {
+  if (origin && !isAllowedOrigin(origin)) {
     return new Response(JSON.stringify({ ok: false, error: "Forbidden: invalid origin" }), {
       status: 403,
       headers: { ...getCorsHeaders(origin), "Content-Type": "application/json" },
