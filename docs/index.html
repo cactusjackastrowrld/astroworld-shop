@@ -127,10 +127,12 @@ footer .logo{font-size:22px;margin-bottom:6px}
     <div class="two" style="margin-top:20px">
       <form class="card" id="reqF">
         <h3>Request a movie or series</h3>
+        <input name="website" type="text" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;opacity:0;height:0;width:0" aria-hidden="true">
         <label>Your name<input name="n" autocomplete="name" required></label>
         <label>Title you want<input name="t" required></label>
         <label>Type<select name="k"><option>Movie</option><option>Series</option><option>Music</option></select></label>
-        <button class="btn" type="submit">Send request on WhatsApp</button>
+        <button class="btn" type="submit">Send request</button>
+        <p class="sub" style="font-size:13px;margin:4px 0 0">Privacy: We collect only what is needed to reply, and use it only for that.</p>
         <div class="msg" aria-live="polite"></div>
       </form>
       <div class="card c3"><h3>How requests work</h3><ul><li>Send us the title and we reply on WhatsApp.</li><li>We confirm availability and the price.</li><li>Requests are subject to availability and licensing.</li></ul></div>
@@ -141,13 +143,15 @@ footer .logo{font-size:22px;margin-bottom:6px}
     <h2>Book an appointment</h2>
     <p class="sub">Pick a service and a time. We confirm on WhatsApp.</p>
     <form class="card" id="bkF" style="max-width:640px">
+      <input name="website" type="text" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;opacity:0;height:0;width:0" aria-hidden="true">
       <label>Your name<input name="n" autocomplete="name" required></label>
       <label>Phone<input name="p" type="tel" autocomplete="tel" placeholder="07XX XXX XXX" required></label>
       <label>Service<select name="s" id="bkS"></select></label>
       <div class="two"><label>Date<input name="d" type="date" id="bkD" required></label><label>Time<input name="h" type="time" required></label></div>
       <label>Notes (optional)<textarea name="x"></textarea></label>
-      <button class="btn" type="submit">Book on WhatsApp</button>
+      <button class="btn" type="submit">Book appointment</button>
       <button class="btn alt" type="button" id="bkM">Send by email instead</button>
+      <p class="sub" style="font-size:13px;margin:4px 0 0">Privacy: We collect only what is needed to reply, and use it only for that.</p>
       <div class="msg" aria-live="polite"></div>
     </form>
   </section>
@@ -158,10 +162,12 @@ footer .logo{font-size:22px;margin-bottom:6px}
     <div class="grid" id="rvL"></div>
     <form class="card" id="rvF" style="max-width:640px;margin-top:18px">
       <h3>Leave a review</h3>
+      <input name="website" type="text" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;opacity:0;height:0;width:0" aria-hidden="true">
       <label>Your name<input name="n" autocomplete="name" required></label>
       <label>Rating<select name="r"><option value="5">5 stars</option><option value="4">4 stars</option><option value="3">3 stars</option><option value="2">2 stars</option><option value="1">1 star</option></select></label>
       <label>Your review<textarea name="t" required></textarea></label>
-      <button class="btn" type="submit">Send review</button>
+      <button class="btn" type="submit">Submit review</button>
+      <p class="sub" style="font-size:13px;margin:4px 0 0">Privacy: We collect only what is needed to reply, and use it only for that.</p>
       <div class="msg" aria-live="polite"></div>
     </form>
   </section>
@@ -179,6 +185,8 @@ footer .logo{font-size:22px;margin-bottom:6px}
 <a class="btn wa fab" data-wa="Hi Astro World, I have a question.">Chat on WhatsApp</a>
 
 <script>
+/* API endpoint (format: https://iqdzokybhggiilzscnxv.supabase.co/functions/v1). Leave empty to use offline sample catalog */
+const API = "https://iqdzokybhggiilzscnxv.supabase.co/functions/v1";
 const PHONE = "254742454100", MAIL = "astroprint27@gmail.com";
 const $ = (s, r = document) => r.querySelector(s);
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x) e.textContent = x; return e; };
@@ -270,40 +278,165 @@ function render() {
   add("Anime", list.filter(i => i.cat === "anime"));
   $("#none").hidden = shown > 0;
 }
-["All"].concat([...new Set(CATALOG.flatMap(i => i.g))].sort()).forEach(g => {
-  const b = el("button", "chip" + (g === "All" ? " on" : ""), g); b.type = "button";
-  b.addEventListener("click", () => { G = g; document.querySelectorAll(".chip").forEach(c => c.classList.toggle("on", c === b)); render(); });
-  $("#chips").appendChild(b);
-});
+function buildGenres() {
+  const box = $("#chips");
+  box.replaceChildren();
+  const list = ["All"].concat([...new Set(CATALOG.flatMap(i => i.g))].sort());
+  list.forEach(g => {
+    const b = el("button", "chip" + (g === G ? " on" : ""), g);
+    b.type = "button";
+    b.addEventListener("click", () => {
+      G = g;
+      document.querySelectorAll(".chip").forEach(c => c.classList.toggle("on", c === b));
+      render();
+    });
+    box.appendChild(b);
+  });
+}
+function renderReviews() {
+  const box = $("#rvL");
+  box.replaceChildren();
+  if (!REVIEWS.length) {
+    box.appendChild(el("div", "empty", "No reviews yet. Be the first to tell us how we did."));
+    return;
+  }
+  REVIEWS.forEach(r => {
+    const c = el("div", "card rv");
+    c.appendChild(el("div", "st", "★".repeat(r.r) + "☆".repeat(Math.max(0, 5 - r.r))));
+    c.appendChild(el("p", "", r.t));
+    c.appendChild(el("b", "", r.n));
+    box.appendChild(c);
+  });
+}
+
 $("#q").addEventListener("input", render);
+buildGenres();
 render();
-if (!REVIEWS.length) $("#rvL").appendChild(el("div", "empty", "No reviews yet. Be the first to tell us how we did."));
-REVIEWS.forEach(r => {
-  const c = el("div", "card rv"); c.appendChild(el("div", "st", "★".repeat(r.r) + "☆".repeat(5 - r.r)));
-  c.appendChild(el("p", "", r.t)); c.appendChild(el("b", "", r.n)); $("#rvL").appendChild(c);
-});
+renderReviews();
+
 $("#bkD").min = new Date().toISOString().slice(0, 10);
 
-$("#reqF").addEventListener("submit", e => {
-  e.preventDefault(); const f = e.target, d = new FormData(f);
-  wa("Hi Astro World, I’d like to request a " + d.get("k") + ": " + d.get("t") + ". My name is " + d.get("n") + ".");
-  ok(f, "Opening WhatsApp to send your request.");
+async function postIntake(payload) {
+  if (!API) return null;
+  try {
+    const res = await fetch(API + "/shop-intake", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return await res.json();
+  } catch (err) {
+    console.warn("Intake API failed, falling back to WhatsApp:", err);
+    return null;
+  }
+}
+
+$("#reqF").addEventListener("submit", async e => {
+  e.preventDefault();
+  const f = e.target, d = new FormData(f);
+  const payload = {
+    type: "request",
+    n: d.get("n"),
+    t: d.get("t"),
+    k: d.get("k"),
+    website: d.get("website") || ""
+  };
+  ok(f, "Sending request...");
+  const res = await postIntake(payload);
+  if (res && res.ok) {
+    ok(f, "Thank you! Your request has been received. We will reply on WhatsApp soon.");
+    f.reset();
+  } else {
+    ok(f, "Connecting to WhatsApp...", true);
+    setTimeout(() => {
+      wa("Hi Astro World, I’d like to request a " + d.get("k") + ": " + d.get("t") + ". My name is " + d.get("n") + ".");
+    }, 600);
+  }
 });
+
 function bookText(f) {
   const d = new FormData(f);
   return "Booking request\nName: " + d.get("n") + "\nPhone: " + d.get("p") + "\nService: " + d.get("s") + "\nDate: " + d.get("d") + "\nTime: " + d.get("h") + (d.get("x") ? "\nNotes: " + d.get("x") : "");
 }
-$("#bkF").addEventListener("submit", e => { e.preventDefault(); wa(bookText(e.target)); ok(e.target, "Opening WhatsApp to confirm your booking."); });
+
+$("#bkF").addEventListener("submit", async e => {
+  e.preventDefault();
+  const f = e.target, d = new FormData(f);
+  const payload = {
+    type: "booking",
+    n: d.get("n"),
+    p: d.get("p"),
+    s: d.get("s"),
+    d: d.get("d"),
+    h: d.get("h"),
+    x: d.get("x") || "",
+    website: d.get("website") || ""
+  };
+  ok(f, "Booking appointment...");
+  const res = await postIntake(payload);
+  if (res && res.ok) {
+    ok(f, "Thank you! Your appointment is booked. We will confirm on WhatsApp shortly.");
+    f.reset();
+  } else {
+    ok(f, "Connecting to WhatsApp...", true);
+    setTimeout(() => { wa(bookText(f)); }, 600);
+  }
+});
+
 $("#bkM").addEventListener("click", () => {
-  const f = $("#bkF"); if (!f.reportValidity()) return;
+  const f = $("#bkF");
+  if (!f.reportValidity()) return;
   open_("mailto:" + MAIL + "?subject=" + encodeURIComponent("Booking request") + "&body=" + encodeURIComponent(bookText(f)));
   ok(f, "Opening your email app.");
 });
-$("#rvF").addEventListener("submit", e => {
-  e.preventDefault(); const f = e.target, d = new FormData(f);
-  wa("Review for Astro World\nName: " + d.get("n") + "\nRating: " + d.get("r") + "/5\n" + d.get("t"));
-  ok(f, "Thank you. Opening WhatsApp to send your review.");
+
+$("#rvF").addEventListener("submit", async e => {
+  e.preventDefault();
+  const f = e.target, d = new FormData(f);
+  const payload = {
+    type: "review",
+    n: d.get("n"),
+    r: d.get("r"),
+    t: d.get("t"),
+    website: d.get("website") || ""
+  };
+  ok(f, "Submitting review...");
+  const res = await postIntake(payload);
+  if (res && res.ok) {
+    ok(f, "Thank you for your feedback! Your review has been submitted for approval.");
+    f.reset();
+  } else {
+    ok(f, "Connecting to WhatsApp...", true);
+    setTimeout(() => {
+      wa("Review for Astro World\nName: " + d.get("n") + "\nRating: " + d.get("r") + "/5\n" + d.get("t"));
+    }, 600);
+  }
 });
+
+/* Load dynamic catalog and reviews from Supabase API */
+async function loadFeed() {
+  if (!API) return;
+  try {
+    const res = await fetch(API + "/shop-feed");
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    if (data && Array.isArray(data.catalog) && data.catalog.length > 0) {
+      CATALOG.length = 0;
+      CATALOG.push(...data.catalog);
+      buildGenres();
+      render();
+    }
+    if (data && Array.isArray(data.reviews) && data.reviews.length > 0) {
+      REVIEWS.length = 0;
+      REVIEWS.push(...data.reviews);
+      renderReviews();
+    }
+  } catch (err) {
+    console.warn("API feed offline or unavailable, keeping embedded catalog fallback:", err);
+  }
+}
+loadFeed();
 
 /* Starfield */
 (function () {
