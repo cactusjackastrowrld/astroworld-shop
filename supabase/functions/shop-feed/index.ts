@@ -29,8 +29,8 @@ serve(async (req) => {
     });
   }
 
-  // Reject wrong origin if explicitly passed
-  if (origin && origin !== siteOrigin) {
+  // Reject wrong origin if explicitly passed (allow siteOrigin and local testing)
+  if (origin && origin !== siteOrigin && origin !== "null") {
     return new Response(JSON.stringify({ error: "Forbidden: invalid origin" }), {
       status: 403,
       headers: { ...getCorsHeaders(origin), "Content-Type": "application/json" },

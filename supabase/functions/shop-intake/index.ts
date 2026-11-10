@@ -78,8 +78,8 @@ serve(async (req) => {
     });
   }
 
-  // 1. Origin verification
-  if (origin && origin !== siteOrigin) {
+  // 1. Origin verification (allow siteOrigin and local testing)
+  if (origin && origin !== siteOrigin && origin !== "null") {
     return new Response(JSON.stringify({ ok: false, error: "Forbidden: invalid origin" }), {
       status: 403,
       headers: { ...getCorsHeaders(origin), "Content-Type": "application/json" },
