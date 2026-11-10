@@ -100,20 +100,17 @@ textarea{resize:vertical;min-height:90px}
   <div class="login-box">
     <div class="logo">ASTRO WORLD</div>
     <div class="badge-admin">Admin Portal</div>
-    <p style="margin-top:8px">Sign in with 1 of the 4 admin profiles</p>
+    <p style="margin-top:8px">Staff & Admin Access</p>
     <div class="msg" id="logMsg"></div>
-    <form id="logF">
+    <form id="logF" autocomplete="off">
       <label>Username
-        <input type="text" id="logU" placeholder="owner, manager, staff1, staff2" required autofocus>
+        <input type="text" id="logU" placeholder="Enter username" autocomplete="off" required autofocus>
       </label>
       <label>Password
-        <input type="password" id="logP" placeholder="••••••••" required>
+        <input type="password" id="logP" placeholder="••••••••" autocomplete="new-password" required>
       </label>
       <button class="btn cyan" type="submit" style="margin-top:6px;width:100%;padding:13px">Log In to Dashboard</button>
     </form>
-    <div style="margin-top:18px;font-size:12px;color:var(--mut)">
-      Default password: <code style="color:var(--yel)">astro2026!</code>
-    </div>
   </div>
 </div>
 
@@ -125,7 +122,7 @@ textarea{resize:vertical;min-height:90px}
       <span class="badge-admin">Admin</span>
     </a>
     <div class="user-bar">
-      <div class="pill">👤 <b id="uName">Admin</b> (<span id="uRole">Role</span>)</div>
+      <div class="pill">👤 <b id="uName">Shop Owner</b> (<span id="uUser" style="color:var(--yel)">@owner</span> • <span id="uRole">Owner</span>)</div>
       <a href="index.html" target="_blank" class="btn alt sm">🌐 View Site</a>
       <button class="btn danger sm" id="btnLogout">Sign Out</button>
     </div>
@@ -347,20 +344,39 @@ textarea{resize:vertical;min-height:90px}
 
   <!-- TAB: SECURITY -->
   <div class="tab-pane" id="tab-security" style="display:none">
-    <div class="card" style="max-width:500px">
-      <h2>Change Your Password</h2>
-      <form id="pwdF" style="display:grid;gap:12px">
-        <label>Current Password
-          <input type="password" id="curP" required>
-        </label>
-        <label>New Password (min 6 characters)
-          <input type="password" id="newP" minlength="6" required>
-        </label>
-        <label>Confirm New Password
-          <input type="password" id="confP" minlength="6" required>
-        </label>
-        <button class="btn cyan" type="submit" style="margin-top:8px">Update Password</button>
-      </form>
+    <div class="grid-2">
+      <!-- Edit Profile / Username -->
+      <div class="card">
+        <h2>👤 Edit Profile & Username</h2>
+        <p style="color:var(--mut);font-size:14px;margin-top:0">Change how your name and login username appear across the dashboard:</p>
+        <form id="profF" style="display:grid;gap:12px">
+          <label>Your Display Name
+            <input type="text" id="profName" placeholder="e.g. Shop Owner, Manager, Cashier" required>
+          </label>
+          <label>Your Login Username
+            <input type="text" id="profUser" placeholder="e.g. owner, manager" minlength="3" required>
+          </label>
+          <button class="btn cyan" type="submit" style="margin-top:8px">💾 Save Profile Details</button>
+        </form>
+      </div>
+
+      <!-- Change Password -->
+      <div class="card">
+        <h2>🔒 Change Your Password</h2>
+        <p style="color:var(--mut);font-size:14px;margin-top:0">Keep your account secure with a strong private password:</p>
+        <form id="pwdF" style="display:grid;gap:12px">
+          <label>Current Password
+            <input type="password" id="curP" autocomplete="current-password" required>
+          </label>
+          <label>New Password (min 6 characters)
+            <input type="password" id="newP" minlength="6" autocomplete="new-password" required>
+          </label>
+          <label>Confirm New Password
+            <input type="password" id="confP" minlength="6" autocomplete="new-password" required>
+          </label>
+          <button class="btn cyan" type="submit" style="margin-top:8px">Update Password</button>
+        </form>
+      </div>
     </div>
   </div>
 </div>
@@ -411,11 +427,17 @@ function checkAuth() {
     $("#login-modal").style.display = "none";
     $("#app").style.display = "block";
     $("#uName").textContent = CURRENT_ADMIN.display_name || CURRENT_ADMIN.username;
+    $("#uUser").textContent = "@" + CURRENT_ADMIN.username;
     $("#uRole").textContent = CURRENT_ADMIN.role || "Admin";
+    if ($("#profName")) $("#profName").value = CURRENT_ADMIN.display_name || "";
+    if ($("#profUser")) $("#profUser").value = CURRENT_ADMIN.username || "";
     initDashboard();
   } else {
     $("#login-modal").style.display = "grid";
     $("#app").style.display = "none";
+    $("#logU").value = "";
+    $("#logP").value = "";
+    $("#logMsg").textContent = "";
   }
 }
 
@@ -437,6 +459,7 @@ $("#logF").addEventListener("submit", async e => {
       CURRENT_ADMIN = data.admin;
       localStorage.setItem("astro_admin_token", TOKEN);
       localStorage.setItem("astro_admin_user", JSON.stringify(CURRENT_ADMIN));
+      $("#logP").value = "";
       checkAuth();
     } else {
       $("#logMsg").textContent = data.error || "Login failed";
@@ -451,6 +474,9 @@ function logout() {
   CURRENT_ADMIN = null;
   localStorage.removeItem("astro_admin_token");
   localStorage.removeItem("astro_admin_user");
+  $("#logU").value = "";
+  $("#logP").value = "";
+  $("#logMsg").textContent = "";
   checkAuth();
 }
 $("#btnLogout").addEventListener("click", logout);
@@ -786,6 +812,28 @@ $("#customTgF").addEventListener("submit", async e => {
     $("#customTgF").reset();
   } else {
     toast("Failed to post", true);
+  }
+});
+
+// Profile update
+$("#profF").addEventListener("submit", async e => {
+  e.preventDefault();
+  const display_name = $("#profName").value.trim();
+  const username = $("#profUser").value.trim().toLowerCase();
+
+  toast("Updating profile...");
+  const res = await api("/update-profile", "POST", { display_name, username });
+  if (res && res.ok) {
+    CURRENT_ADMIN = res.admin;
+    TOKEN = res.token;
+    localStorage.setItem("astro_admin_token", TOKEN);
+    localStorage.setItem("astro_admin_user", JSON.stringify(CURRENT_ADMIN));
+    $("#uName").textContent = CURRENT_ADMIN.display_name;
+    $("#uUser").textContent = "@" + CURRENT_ADMIN.username;
+    toast("Profile updated successfully!");
+    loadAdmins();
+  } else {
+    toast(res ? res.error : "Failed to update profile", true);
   }
 });
 

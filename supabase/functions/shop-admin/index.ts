@@ -442,6 +442,48 @@ serve(async (req) => {
       return jsonResponse({ ok: true });
     }
 
+    if (path === "/update-profile" && req.method === "POST") {
+      const body = await req.json();
+      const newUsername = (body.username || "").trim().toLowerCase();
+      const newDisplayName = (body.display_name || "").trim();
+
+      if (!newUsername || newUsername.length < 3) {
+        return jsonResponse({ ok: false, error: "Username must be at least 3 characters" }, 400);
+      }
+
+      // Check if username is already taken by another admin
+      const { data: existing } = await supabase
+        .from("admins")
+        .select("id")
+        .eq("username", newUsername)
+        .neq("id", session.id)
+        .maybeSingle();
+
+      if (existing) {
+        return jsonResponse({ ok: false, error: "Username is already in use by another admin" }, 400);
+      }
+
+      const updates: any = { username: newUsername };
+      if (newDisplayName) updates.display_name = newDisplayName;
+
+      const { data: updated, error: updateError } = await supabase
+        .from("admins")
+        .update(updates)
+        .eq("id", session.id)
+        .select("id, username, display_name, role")
+        .single();
+
+      if (updateError) throw updateError;
+
+      const newToken = await createToken({
+        id: updated.id,
+        username: updated.username,
+        role: updated.role,
+      });
+
+      return jsonResponse({ ok: true, admin: updated, token: newToken });
+    }
+
     return jsonResponse({ error: "Endpoint not found" }, 404);
   } catch (err: any) {
     return jsonResponse({ ok: false, error: err.message }, 500);
