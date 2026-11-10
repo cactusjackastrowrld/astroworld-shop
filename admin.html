@@ -2,296 +2,285 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Astro World Admin Portal</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#05030f;--panel:#0d0722;--card:#140c34;--line:#2e1f63;--text:#f4f0ff;--mut:#a495e4;--pink:#ff3d9a;--yel:#ffd23f;--cyan:#2ee6ff;--grn:#39ff88;--pur:#8b5cff;--red:#ff4d4d;--rad:14px}
-color-scheme:dark;box-sizing:border-box;margin:0;padding:0}
-*,*::before,*::after{box-sizing:inherit}
-body{margin:0;background:var(--bg);color:var(--text);font:400 15px/1.5 Outfit,system-ui,sans-serif;min-height:100vh}
-#stars{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
-.app{position:relative;z-index:1;max-width:1300px;margin:0 auto;padding:16px 20px 80px}
-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 20px;background:#0d0722cc;backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:var(--rad);margin-bottom:20px}
-.brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--text)}
-.logo{font:400 20px/1 Bungee,sans-serif;letter-spacing:.04em}
+:root{--bg:#05030f;--panel:#0d0722;--card:#140c34;--line:#2e1f63;--text:#f4f0ff;--mut:#a495e4;--pink:#ff3d9a;--yel:#ffd23f;--cyan:#2ee6ff;--grn:#39ff88;--pur:#8b5cff;--red:#ff4455;--rad:14px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font:400 15px/1.5 Outfit,sans-serif;min-height:100vh}
+#stars{position:fixed;inset:0;z-index:0;pointer-events:none}
+.app{position:relative;z-index:1;max-width:1340px;margin:0 auto;padding:14px 18px 80px}
+
+/* header */
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px;background:#0d0722cc;backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:var(--rad);margin-bottom:18px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text)}
+.logo{font:400 20px/1 Bungee;letter-spacing:.04em}
 .logo span:nth-child(5n+1){color:var(--pink)}.logo span:nth-child(5n+2){color:var(--yel)}.logo span:nth-child(5n+3){color:var(--cyan)}.logo span:nth-child(5n+4){color:var(--grn)}.logo span:nth-child(5n){color:#fff}
-.badge-admin{background:linear-gradient(90deg,var(--pink),var(--pur));padding:3px 9px;border-radius:99px;font:700 11px Outfit;color:#fff;letter-spacing:1px;text-transform:uppercase}
-.user-bar{display:flex;align-items:center;gap:12px}
+.badge{padding:3px 9px;border-radius:99px;font:700 11px Outfit;letter-spacing:1px;text-transform:uppercase}
+.badge.admin{background:linear-gradient(90deg,var(--pink),var(--pur));color:#fff}
+.badge.owner{background:var(--yel);color:#111}
+.user-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .pill{background:#1a0f3d;border:1px solid var(--line);padding:6px 14px;border-radius:99px;font-size:13px;font-weight:600;color:var(--mut)}
-.pill b{color:var(--cyan)}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:10px;padding:9px 16px;font:700 14px Outfit,sans-serif;cursor:pointer;background:var(--pink);color:#fff;text-decoration:none;transition:filter .2s,transform .1s}
-.btn:hover{filter:brightness(1.15)}
-.btn:active{transform:scale(.98)}
+.pill b{color:var(--cyan)}.pill span.yr{color:var(--yel)}
+
+/* tabs */
+.nav-tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:20px;scrollbar-width:none}
+.nav-tabs::-webkit-scrollbar{display:none}
+.tab-btn{background:#0d0722;border:1px solid var(--line);color:var(--mut);border-radius:10px;padding:9px 16px;font:700 13px Outfit;cursor:pointer;display:flex;align-items:center;gap:7px;white-space:nowrap;transition:border-color .2s,color .2s}
+.tab-btn:hover{border-color:var(--pur);color:#fff}
+.tab-btn.active{background:linear-gradient(135deg,#2e1666,#140c34);border-color:var(--cyan);color:#fff;box-shadow:0 0 14px #2ee6ff33}
+.tab-badge{background:var(--pink);color:#fff;font-size:11px;padding:2px 7px;border-radius:99px;font-weight:700}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;border:0;border-radius:10px;padding:9px 16px;font:700 14px Outfit;cursor:pointer;color:#fff;background:var(--pink);text-decoration:none;transition:filter .2s,transform .1s}
+.btn:hover{filter:brightness(1.15)}.btn:active{transform:scale(.98)}
 .btn.sm{padding:5px 10px;font-size:12px;border-radius:8px}
 .btn.alt{background:#1c1044;border:1px solid var(--line);color:var(--text)}
 .btn.wa{background:#25d366;color:#04210f}
-.btn.danger{background:#ff3355;color:#fff}
-.btn.cyan{background:var(--cyan);color:#05030f}
 .btn.grn{background:var(--grn);color:#05030f}
+.btn.cyan{background:var(--cyan);color:#05030f}
+.btn.yel{background:var(--yel);color:#111}
+.btn.danger{background:var(--red)}
 
-/* Tabs */
-.nav-tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:22px;scrollbar-width:none}
-.nav-tabs::-webkit-scrollbar{display:none}
-.tab-btn{background:#0d0722;border:1px solid var(--line);color:var(--mut);border-radius:10px;padding:10px 18px;font:700 14px Outfit;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap}
-.tab-btn.active{background:linear-gradient(135deg,#2e1666,#140c34);border-color:var(--cyan);color:#fff;box-shadow:0 0 16px #2ee6ff33}
-.tab-badge{background:var(--pink);color:#fff;font-size:11px;padding:2px 7px;border-radius:99px;font-weight:700}
-
-/* Stats */
-.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:24px}
-.stat-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--rad);padding:18px 20px;position:relative;overflow:hidden}
-.stat-card::after{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--pink),var(--cyan))}
-.stat-label{color:var(--mut);font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:1px}
-.stat-val{font:700 34px/1.2 Outfit;color:#fff;margin:6px 0 2px}
-.stat-sub{font-size:12px;color:var(--yel)}
-
-/* Content cards & tables */
-.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--rad);padding:22px;margin-bottom:22px}
-.card h2{margin:0 0 16px;font:400 22px Bungee,sans-serif;color:var(--yel);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+/* cards/tables */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--rad);padding:20px;margin-bottom:20px}
+.card h2{margin:0 0 14px;font:400 20px Bungee;color:var(--yel);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
 .table-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:14px;text-align:left}
-th{background:#160d38;color:var(--mut);padding:12px 14px;font-weight:700;border-bottom:1px solid var(--line);white-space:nowrap}
-td{padding:12px 14px;border-bottom:1px solid #1c1044;vertical-align:middle}
+th{background:#160d38;color:var(--mut);padding:11px 13px;font-weight:700;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:11px 13px;border-bottom:1px solid #1c1044;vertical-align:middle}
 tr:hover td{background:#140c3488}
-.tag{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700;text-transform:capitalize}
-.tag.new{background:#ffd23f26;color:var(--yel);border:1px solid #ffd23f55}
-.tag.confirmed{background:#2ee6ff26;color:var(--cyan);border:1px solid #2ee6ff55}
-.tag.completed,.tag.ready{background:#39ff8826;color:var(--grn);border:1px solid #39ff8855}
-.tag.cancelled{background:#ff335526;color:var(--red);border:1px solid #ff335555}
+.tag{display:inline-block;padding:3px 9px;border-radius:99px;font-size:12px;font-weight:700;text-transform:capitalize}
+.tag.new,.tag.open{background:#ffd23f26;color:var(--yel);border:1px solid #ffd23f55}
+.tag.confirmed,.tag.ready{background:#2ee6ff26;color:var(--cyan);border:1px solid #2ee6ff55}
+.tag.completed,.tag.approved{background:#39ff8826;color:var(--grn);border:1px solid #39ff8855}
+.tag.blocked,.tag.cancelled{background:#ff445526;color:var(--red);border:1px solid #ff445555}
+.tag.pending{background:#8b5cff26;color:var(--pur);border:1px solid #8b5cff55}
 
-/* Catalog Grid */
-.cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+/* stats */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:20px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--rad);padding:16px 18px;position:relative;overflow:hidden}
+.stat::after{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--pink),var(--cyan))}
+.stat-label{color:var(--mut);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px}
+.stat-val{font:700 32px/1.2 Outfit;color:#fff;margin:4px 0 2px}
+.stat-sub{font-size:12px;color:var(--yel)}
+
+/* grid-2 */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:820px){.g2{grid-template-columns:1fr}}
+
+/* forms */
+label{display:grid;gap:5px;font-weight:600;font-size:14px}
+input,select,textarea{width:100%;background:#060412;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:400 15px Outfit}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--cyan);border-color:var(--cyan)}
+textarea{resize:vertical;min-height:80px}
+form.grid{display:grid;gap:12px}
+
+/* chat widget */
+.chat-layout{display:grid;grid-template-columns:280px 1fr;height:520px;border:1px solid var(--line);border-radius:var(--rad);overflow:hidden}
+.chat-list{background:#0a0518;border-right:1px solid var(--line);overflow-y:auto;display:flex;flex-direction:column}
+.conv-item{padding:12px 14px;cursor:pointer;border-bottom:1px solid var(--line);transition:background .2s}
+.conv-item:hover,.conv-item.active{background:#1a0f3d}
+.conv-item .cname{font-weight:700;font-size:14px}
+.conv-item .ctime{font-size:11px;color:var(--mut);margin-top:2px}
+.conv-item .cbadge{float:right;background:var(--pink);color:#fff;border-radius:99px;padding:1px 7px;font-size:11px;font-weight:700}
+.chat-main{display:flex;flex-direction:column;background:#07041a}
+.chat-header{padding:12px 16px;background:#0d0722;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.chat-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+.chat-no-sel{flex:1;display:grid;place-items:center;color:var(--mut);font-size:15px;text-align:center;padding:20px}
+.msg-bubble{max-width:72%;padding:9px 13px;border-radius:14px;font-size:14px;line-height:1.45;word-break:break-word}
+.msg-bubble.customer{background:#1a0f3d;border:1px solid var(--line);border-bottom-left-radius:4px;align-self:flex-start}
+.msg-bubble.admin{background:linear-gradient(135deg,#8b5cff,#ff3d9a);border-bottom-right-radius:4px;align-self:flex-end}
+.msg-meta{font-size:11px;color:var(--mut);margin-bottom:3px}
+.msg-meta.right{text-align:right}
+.chat-footer{padding:12px 14px;border-top:1px solid var(--line);display:flex;gap:8px}
+.chat-footer textarea{min-height:44px;resize:none;border-radius:10px;font-size:14px}
+@media(max-width:700px){.chat-layout{grid-template-columns:1fr;height:auto}.chat-list{max-height:200px}}
+
+/* admin accounts */
+.admin-row{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--card);border:1px solid var(--line);border-radius:10px;flex-wrap:wrap}
+.admin-row.blocked-row{opacity:.55;border-color:var(--red)}
+.admin-info{flex:1;min-width:140px}
+.admin-actions{display:flex;gap:6px;flex-wrap:wrap}
+.online-dot{width:9px;height:9px;border-radius:50%;background:#3f3f3f;display:inline-block;margin-right:5px}
+.online-dot.online{background:var(--grn);box-shadow:0 0 6px #39ff88}
+
+/* catalog */
+.cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:14px}
 .cat-item{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
 .cat-thumb{aspect-ratio:2/3;background:#05030f;position:relative;overflow:hidden}
 .cat-thumb img{width:100%;height:100%;object-fit:cover}
-.cat-body{padding:12px;flex:1;display:flex;flex-direction:column;gap:6px}
-.cat-title{font-weight:700;font-size:15px;line-height:1.2}
+.cat-body{padding:11px;flex:1;display:flex;flex-direction:column;gap:5px}
+.cat-title{font-weight:700;font-size:14px;line-height:1.2}
 .cat-subt{font-size:12px;color:var(--yel)}
 .cat-genres{font-size:11px;color:var(--mut)}
-.cat-actions{display:flex;gap:6px;margin-top:auto;padding-top:10px}
+.cat-actions{display:flex;gap:5px;margin-top:auto;padding-top:8px}
 
-/* Forms & inputs */
-.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-@media(max-width:760px){.grid-2{grid-template-columns:1fr}}
-label{display:grid;gap:6px;font-weight:600;font-size:14px;color:var(--text)}
-input,select,textarea{width:100%;background:#060412;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px 12px;font:400 15px Outfit,sans-serif}
-input:focus,select:focus,textarea:focus{outline:2px solid var(--cyan);border-color:var(--cyan)}
-textarea{resize:vertical;min-height:90px}
+/* login */
+#login-modal{position:fixed;inset:0;background:#05030fcc;backdrop-filter:blur(16px);z-index:200;display:none;place-items:center;padding:16px}
+.login-box{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:30px 26px;max-width:400px;width:100%;box-shadow:0 0 50px #8b5cff33;text-align:center}
+.login-box .logo{font-size:26px;margin-bottom:6px}
+.login-box .sub{color:var(--mut);font-size:14px;margin:6px 0 20px}
+.login-box form{display:grid;gap:12px;text-align:left}
+.errmsg{font-size:13px;font-weight:600;color:var(--red);min-height:18px;text-align:center}
 
-/* Login Modal */
-#login-modal{position:fixed;inset:0;background:#05030fcc;backdrop-filter:blur(16px);z-index:200;display:grid;place-items:center;padding:16px}
-.login-box{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:32px 28px;max-width:400px;width:100%;box-shadow:0 0 50px #8b5cff33;text-align:center}
-.login-box .logo{font-size:28px;margin-bottom:8px}
-.login-box p{color:var(--mut);margin:0 0 24px;font-size:14px}
-.login-box form{display:grid;gap:14px;text-align:left}
-.msg{font-size:13px;font-weight:600;color:var(--red);min-height:20px;text-align:center}
+/* toast */
+#toast{position:fixed;bottom:22px;right:22px;z-index:300;background:#180f3acc;border:1px solid var(--cyan);color:#fff;padding:11px 18px;border-radius:12px;font-weight:600;box-shadow:0 0 20px #2ee6ff44;display:none;align-items:center;gap:8px}
 
-/* Toast Notification */
-#toast{position:fixed;bottom:24px;right:24px;z-index:300;background:#180f3acc;border:1px solid var(--cyan);color:#fff;padding:12px 20px;border-radius:12px;font-weight:600;box-shadow:0 0 24px #2ee6ff44;display:none;align-items:center;gap:10px;animation:slideUp .3s}
-@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:none;opacity:1}}
+/* modal */
+.overlay{position:fixed;inset:0;background:#05030fbb;z-index:150;display:none;place-items:center;padding:16px}
+.modal-box{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px;max-width:460px;width:100%;position:relative}
+.modal-box h3{margin:0 0 16px;font:400 20px Bungee;color:var(--yel)}
+.modal-close{position:absolute;top:14px;right:14px;background:none;border:0;color:var(--mut);font-size:20px;cursor:pointer}
 </style>
 </head>
 <body>
 <canvas id="stars"></canvas>
 
-<!-- LOGIN OVERLAY -->
-<div id="login-modal" style="display:none">
+<!-- LOGIN -->
+<div id="login-modal">
   <div class="login-box">
     <div class="logo">ASTRO WORLD</div>
-    <div class="badge-admin">Admin Portal</div>
-    <p style="margin-top:8px">Staff & Admin Access</p>
-    <div class="msg" id="logMsg"></div>
-    <form id="logF" autocomplete="off">
-      <label>Username
-        <input type="text" id="logU" placeholder="Enter username" autocomplete="off" required autofocus>
-      </label>
-      <label>Password
-        <input type="password" id="logP" placeholder="••••••••" autocomplete="new-password" required>
-      </label>
-      <button class="btn cyan" type="submit" style="margin-top:6px;width:100%;padding:13px">Log In to Dashboard</button>
+    <div class="badge admin" style="margin:6px auto 0;display:inline-block">Admin Portal</div>
+    <div class="sub">Staff & Admin Access</div>
+    <div class="errmsg" id="logMsg"></div>
+    <form id="logF" autocomplete="off" class="grid">
+      <label>Username <input type="text" id="logU" placeholder="Enter your username" autocomplete="off" required autofocus></label>
+      <label>Password <input type="password" id="logP" placeholder="••••••••" autocomplete="new-password" required></label>
+      <button class="btn cyan" type="submit" style="width:100%;padding:13px;margin-top:4px">Log In</button>
     </form>
   </div>
 </div>
 
-<!-- MAIN DASHBOARD -->
+<!-- ADD ADMIN MODAL (Owner only) -->
+<div class="overlay" id="addAdminOverlay">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeAddAdmin()">✕</button>
+    <h3>➕ Add New Admin</h3>
+    <form id="addAdminF" class="grid">
+      <label>Display Name <input type="text" id="aaName" placeholder="e.g. Front Desk, Cashier" required></label>
+      <label>Username <input type="text" id="aaUser" placeholder="e.g. staff3" required minlength="3"></label>
+      <label>Role
+        <select id="aaRole">
+          <option value="Staff">Staff</option>
+          <option value="Operator">Operator</option>
+          <option value="Manager">Manager</option>
+          <option value="Owner">Owner</option>
+        </select>
+      </label>
+      <label>Password (min 6 characters) <input type="password" id="aaPass" required minlength="6"></label>
+      <div class="errmsg" id="aaMsg"></div>
+      <button class="btn grn" type="submit">Create Admin Account</button>
+    </form>
+  </div>
+</div>
+
+<!-- MAIN APP -->
 <div class="app" id="app" style="display:none">
   <header>
-    <a href="index.html" class="brand" target="_blank" title="View live website">
+    <a href="index.html" class="brand" target="_blank">
       <div class="logo">ASTRO WORLD</div>
-      <span class="badge-admin">Admin</span>
+      <span class="badge admin">Admin</span>
     </a>
     <div class="user-bar">
-      <div class="pill">👤 <b id="uName">Shop Owner</b> (<span id="uUser" style="color:var(--yel)">@owner</span> • <span id="uRole">Owner</span>)</div>
+      <div class="pill">👤 <b id="uName">Admin</b> <span class="yr" id="uUser">@username</span> · <span id="uRole">Role</span></div>
       <a href="index.html" target="_blank" class="btn alt sm">🌐 View Site</a>
       <button class="btn danger sm" id="btnLogout">Sign Out</button>
     </div>
   </header>
 
-  <!-- NAVIGATION TABS -->
   <div class="nav-tabs">
     <button class="tab-btn active" data-tab="tab-overview">📊 Overview</button>
-    <button class="tab-btn" data-tab="tab-bookings">📅 Bookings <span class="tab-badge" id="bPendingCount" style="display:none">0</span></button>
-    <button class="tab-btn" data-tab="tab-requests">📥 Movie Requests <span class="tab-badge" id="rNewCount" style="display:none">0</span></button>
-    <button class="tab-btn" data-tab="tab-reviews">⭐ Reviews <span class="tab-badge" id="rvPendingCount" style="display:none">0</span></button>
-    <button class="tab-btn" data-tab="tab-catalog">🎬 Catalog & Posters</button>
-    <button class="tab-btn" data-tab="tab-bot">🤖 Telegram Bot Post</button>
-    <button class="tab-btn" data-tab="tab-security">🔒 Security & Password</button>
+    <button class="tab-btn" data-tab="tab-bookings">📅 Bookings <span class="tab-badge" id="bBadge" style="display:none">0</span></button>
+    <button class="tab-btn" data-tab="tab-requests">📥 Requests <span class="tab-badge" id="rBadge" style="display:none">0</span></button>
+    <button class="tab-btn" data-tab="tab-reviews">⭐ Reviews <span class="tab-badge" id="rvBadge" style="display:none">0</span></button>
+    <button class="tab-btn" data-tab="tab-catalog">🎬 Catalog</button>
+    <button class="tab-btn" data-tab="tab-bot">🤖 Bot & Post</button>
+    <button class="tab-btn" data-tab="tab-chat">💬 Live Chat <span class="tab-badge" id="chatBadge" style="display:none">0</span></button>
+    <button class="tab-btn" data-tab="tab-team" id="teamTabBtn">👥 Team</button>
+    <button class="tab-btn" data-tab="tab-settings">⚙️ My Account</button>
   </div>
 
-  <!-- TAB: OVERVIEW -->
+  <!-- OVERVIEW -->
   <div class="tab-pane" id="tab-overview">
     <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-label">Active Posters</div>
-        <div class="stat-val" id="sCat">0</div>
-        <div class="stat-sub">Titles live on homepage</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">New Bookings</div>
-        <div class="stat-val" id="sBkPending">0</div>
-        <div class="stat-sub"><span id="sBkTotal">0</span> total booked</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">New Requests</div>
-        <div class="stat-val" id="sReqNew">0</div>
-        <div class="stat-sub"><span id="sReqTotal">0</span> total titles requested</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Pending Reviews</div>
-        <div class="stat-val" id="sRvPending">0</div>
-        <div class="stat-sub"><span id="sRvTotal">0</span> total customer ratings</div>
-      </div>
+      <div class="stat"><div class="stat-label">Active Titles</div><div class="stat-val" id="sCat">0</div><div class="stat-sub">on homepage</div></div>
+      <div class="stat"><div class="stat-label">New Bookings</div><div class="stat-val" id="sBkP">0</div><div class="stat-sub"><span id="sBkT">0</span> total</div></div>
+      <div class="stat"><div class="stat-label">New Requests</div><div class="stat-val" id="sReqN">0</div><div class="stat-sub"><span id="sReqT">0</span> total</div></div>
+      <div class="stat"><div class="stat-label">Pending Reviews</div><div class="stat-val" id="sRvP">0</div><div class="stat-sub"><span id="sRvT">0</span> total</div></div>
+      <div class="stat"><div class="stat-label">Open Chats</div><div class="stat-val" id="sChat">0</div><div class="stat-sub">waiting for reply</div></div>
     </div>
-
-    <div class="grid-2">
+    <div class="g2">
       <div class="card">
-        <h2>⚡ Quick Broadcast to Telegram Bot</h2>
-        <p style="color:var(--mut);font-size:14px;margin-top:0">Send an instant alert or announcement directly through the shop bot to your chat:</p>
-        <form id="quickBotF" style="display:grid;gap:12px">
-          <textarea id="qBotMsg" placeholder="Type your announcement or status update here..." required></textarea>
-          <button class="btn cyan" type="submit">📢 Send Message via Bot</button>
+        <h2>⚡ Quick Bot Message</h2>
+        <form id="quickBotF" class="grid">
+          <textarea id="qBotMsg" placeholder="Type an announcement or alert..."></textarea>
+          <button class="btn cyan" type="submit">📢 Send via Telegram Bot</button>
         </form>
       </div>
-
       <div class="card">
-        <h2>🛠️ Admin Accounts</h2>
-        <p style="color:var(--mut);font-size:14px;margin-top:0">Your shop is configured with 4 dedicated profiles:</p>
-        <div style="display:grid;gap:8px" id="adminsList"></div>
+        <h2>👥 Team Online</h2>
+        <div id="overviewAdmins" style="display:grid;gap:8px"></div>
       </div>
     </div>
   </div>
 
-  <!-- TAB: BOOKINGS -->
+  <!-- BOOKINGS -->
   <div class="tab-pane" id="tab-bookings" style="display:none">
     <div class="card">
-      <h2>
-        Cyber Service Bookings
-        <button class="btn alt sm" onclick="loadBookings()">🔄 Refresh</button>
-      </h2>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Date / Time</th>
-              <th>Customer</th>
-              <th>Phone</th>
-              <th>Service</th>
-              <th>Notes</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="bkRows">
-            <tr><td colspan="7" style="text-align:center;color:var(--mut)">Loading bookings...</td></tr>
-          </tbody>
-        </table>
-      </div>
+      <h2>Cyber Service Bookings <button class="btn alt sm" onclick="loadBookings()">🔄 Refresh</button></h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Date/Time</th><th>Customer</th><th>Phone</th><th>Service</th><th>Notes</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody id="bkRows"><tr><td colspan="7" style="text-align:center;color:var(--mut)">Loading...</td></tr></tbody>
+      </table></div>
     </div>
   </div>
 
-  <!-- TAB: REQUESTS -->
+  <!-- REQUESTS -->
   <div class="tab-pane" id="tab-requests" style="display:none">
     <div class="card">
-      <h2>
-        Movie & Series Requests
-        <button class="btn alt sm" onclick="loadRequests()">🔄 Refresh</button>
-      </h2>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Customer</th>
-              <th>Phone</th>
-              <th>Title Requested</th>
-              <th>Type</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="reqRows">
-            <tr><td colspan="7" style="text-align:center;color:var(--mut)">Loading requests...</td></tr>
-          </tbody>
-        </table>
-      </div>
+      <h2>Movie & Series Requests <button class="btn alt sm" onclick="loadRequests()">🔄 Refresh</button></h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Date</th><th>Customer</th><th>Phone</th><th>Title</th><th>Type</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody id="reqRows"><tr><td colspan="7" style="text-align:center;color:var(--mut)">Loading...</td></tr></tbody>
+      </table></div>
     </div>
   </div>
 
-  <!-- TAB: REVIEWS -->
+  <!-- REVIEWS -->
   <div class="tab-pane" id="tab-reviews" style="display:none">
     <div class="card">
-      <h2>
-        Customer Reviews & Moderation
-        <button class="btn alt sm" onclick="loadReviews()">🔄 Refresh</button>
-      </h2>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Customer</th>
-              <th>Stars</th>
-              <th>Review Text</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="rvRows">
-            <tr><td colspan="6" style="text-align:center;color:var(--mut)">Loading reviews...</td></tr>
-          </tbody>
-        </table>
-      </div>
+      <h2>Customer Reviews <button class="btn alt sm" onclick="loadReviews()">🔄 Refresh</button></h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Date</th><th>Name</th><th>Stars</th><th>Review</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="rvRows"><tr><td colspan="6" style="text-align:center;color:var(--mut)">Loading...</td></tr></tbody>
+      </table></div>
     </div>
   </div>
 
-  <!-- TAB: CATALOG -->
+  <!-- CATALOG -->
   <div class="tab-pane" id="tab-catalog" style="display:none">
     <div class="card">
-      <h2>
-        <span>Live Catalog (<span id="catTotal">0</span>)</span>
-        <div style="display:flex;gap:8px">
-          <input type="text" id="catSearch" placeholder="Search titles..." style="width:200px;padding:6px 10px;font-size:13px">
-          <button class="btn alt sm" onclick="loadCatalog()">🔄 Refresh</button>
+      <h2><span>Catalog (<span id="catTotal">0</span>)</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="text" id="catQ" placeholder="Search..." style="width:180px;padding:6px 10px;font-size:13px">
+          <button class="btn alt sm" onclick="loadCatalog()">🔄</button>
         </div>
       </h2>
-      <div class="cat-grid" id="catList">
-        <div style="color:var(--mut)">Loading posters...</div>
-      </div>
+      <div class="cat-grid" id="catList"><div style="color:var(--mut)">Loading...</div></div>
     </div>
   </div>
 
-  <!-- TAB: BOT & BROADCAST -->
+  <!-- BOT & POST -->
   <div class="tab-pane" id="tab-bot" style="display:none">
-    <div class="grid-2">
-      <!-- Create & Announce Poster -->
+    <div class="g2">
       <div class="card">
-        <h2>🎬 Publish New Poster & Announce</h2>
-        <form id="addCatF" style="display:grid;gap:12px">
-          <label>Title *
-            <input type="text" id="cTitle" placeholder="e.g. Gladiator II" required>
-          </label>
-          <div class="grid-2">
+        <h2>🎬 Publish New Title</h2>
+        <form id="addCatF" class="grid">
+          <label>Title * <input type="text" id="cTitle" placeholder="e.g. Gladiator II" required></label>
+          <div class="g2">
             <label>Category *
               <select id="cCat" required>
                 <option value="movies">Movie</option>
@@ -300,81 +289,96 @@ textarea{resize:vertical;min-height:90px}
                 <option value="animation">Animation</option>
               </select>
             </label>
-            <label>Subtitle / Season
-              <input type="text" id="cSub" placeholder="e.g. Season 2, 5 Nov">
-            </label>
+            <label>Subtitle / Season <input type="text" id="cSub" placeholder="e.g. Season 2"></label>
           </div>
-          <label>Genres (comma separated)
-            <input type="text" id="cGen" placeholder="Action, Thriller, Sci-fi" value="Action">
-          </label>
-          <label>Poster Image URL *
-            <input type="url" id="cImg" placeholder="https://image-url-here.jpg" required>
-          </label>
-          <label>Description / Synopsis
-            <textarea id="cDesc" placeholder="Short description of the title..."></textarea>
-          </label>
+          <label>Genres (comma separated) <input type="text" id="cGen" placeholder="Action, Thriller" value="Action"></label>
+          <label>Poster Image URL * <input type="url" id="cImg" placeholder="https://..." required></label>
+          <label>Description <textarea id="cDesc" placeholder="Short synopsis..."></textarea></label>
           <div style="display:flex;gap:16px;flex-wrap:wrap">
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-              <input type="checkbox" id="cTrend" style="width:auto"> 🔥 Mark as Trending (Top Slider)
-            </label>
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-              <input type="checkbox" id="cTgAnnounce" checked style="width:auto"> 📢 Also Post to Telegram Bot
-            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="cTrend" style="width:auto"> 🔥 Mark Trending</label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="cTg" checked style="width:auto"> 📢 Post to Telegram</label>
           </div>
-          <button class="btn cyan" type="submit" style="margin-top:8px">🚀 Save & Publish Title</button>
+          <button class="btn cyan" type="submit">🚀 Publish Title</button>
         </form>
       </div>
-
-      <!-- Telegram Bot Broadcast -->
       <div class="card">
-        <h2>🤖 Send Custom Telegram Post</h2>
-        <p style="color:var(--mut);font-size:14px;margin-top:0">Send a custom text announcement or photo update to your shop Telegram chat:</p>
-        <form id="customTgF" style="display:grid;gap:12px">
-          <label>Message Text *
-            <textarea id="tgMsg" placeholder="Type announcement here (supports <b>bold</b>, <i>italic</i>, links)..." required></textarea>
-          </label>
-          <label>Optional Photo Image URL
-            <input type="url" id="tgPhoto" placeholder="https://image-link.jpg">
-          </label>
-          <button class="btn grn" type="submit">✈️ Send to Telegram Chat</button>
+        <h2>🤖 Custom Telegram Post</h2>
+        <form id="customTgF" class="grid">
+          <label>Message Text * <textarea id="tgMsg" placeholder="Announcement text..." required></textarea></label>
+          <label>Optional Photo URL <input type="url" id="tgPhoto" placeholder="https://..."></label>
+          <button class="btn grn" type="submit">✈️ Send to Telegram</button>
         </form>
       </div>
     </div>
   </div>
 
-  <!-- TAB: SECURITY -->
-  <div class="tab-pane" id="tab-security" style="display:none">
-    <div class="grid-2">
-      <!-- Edit Profile / Username -->
+  <!-- LIVE CHAT -->
+  <div class="tab-pane" id="tab-chat" style="display:none">
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="chat-layout">
+        <div class="chat-list" id="convList">
+          <div style="padding:12px 14px;border-bottom:1px solid var(--line);font-weight:700;color:var(--yel);font-size:13px">
+            💬 CONVERSATIONS
+            <button class="btn alt sm" style="float:right;padding:3px 8px;font-size:11px" onclick="loadConversations()">↻</button>
+          </div>
+          <div id="convItems" style="flex:1;overflow-y:auto"><div style="padding:16px;color:var(--mut);font-size:13px">Loading chats...</div></div>
+        </div>
+        <div class="chat-main" id="chatMain">
+          <div class="chat-no-sel" id="chatNoSel">
+            <div>
+              <div style="font-size:36px;margin-bottom:10px">💬</div>
+              <div>Select a conversation to reply</div>
+            </div>
+          </div>
+          <div id="chatActive" style="display:none;flex-direction:column;height:100%">
+            <div class="chat-header">
+              <div>
+                <div style="font-weight:700" id="chatCName">Customer</div>
+                <div style="font-size:12px;color:var(--mut)" id="chatCStatus">open</div>
+              </div>
+              <button class="btn alt sm" id="btnCloseChat" onclick="closeConversation()">✕ Close Chat</button>
+            </div>
+            <div class="chat-msgs" id="chatMsgs"></div>
+            <div class="chat-footer">
+              <textarea id="replyText" placeholder="Type your reply..." rows="2"></textarea>
+              <button class="btn cyan" id="btnReply" onclick="sendReply()" style="align-self:flex-end;white-space:nowrap">Send ▶</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TEAM (shown for all, Owner gets full controls) -->
+  <div class="tab-pane" id="tab-team" style="display:none">
+    <div class="card" id="teamCard">
+      <h2>👥 Admin Team
+        <button class="btn grn sm" id="btnAddAdmin" onclick="openAddAdmin()" style="display:none">➕ Add Admin</button>
+      </h2>
+      <div id="adminList" style="display:grid;gap:10px">Loading...</div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="tab-pane" id="tab-settings" style="display:none">
+    <div class="g2">
       <div class="card">
-        <h2>👤 Edit Profile & Username</h2>
-        <p style="color:var(--mut);font-size:14px;margin-top:0">Change how your name and login username appear across the dashboard:</p>
-        <form id="profF" style="display:grid;gap:12px">
-          <label>Your Display Name
-            <input type="text" id="profName" placeholder="e.g. Shop Owner, Manager, Cashier" required>
-          </label>
-          <label>Your Login Username
-            <input type="text" id="profUser" placeholder="e.g. owner, manager" minlength="3" required>
-          </label>
-          <button class="btn cyan" type="submit" style="margin-top:8px">💾 Save Profile Details</button>
+        <h2>👤 Edit My Profile</h2>
+        <form id="profF" class="grid">
+          <label>Display Name <input type="text" id="profName" placeholder="Your name" required></label>
+          <label>Username (login ID) <input type="text" id="profUser" placeholder="Your username" minlength="3" required></label>
+          <div class="errmsg" id="profMsg"></div>
+          <button class="btn cyan" type="submit">💾 Save Profile</button>
         </form>
       </div>
-
-      <!-- Change Password -->
       <div class="card">
-        <h2>🔒 Change Your Password</h2>
-        <p style="color:var(--mut);font-size:14px;margin-top:0">Keep your account secure with a strong private password:</p>
-        <form id="pwdF" style="display:grid;gap:12px">
-          <label>Current Password
-            <input type="password" id="curP" autocomplete="current-password" required>
-          </label>
-          <label>New Password (min 6 characters)
-            <input type="password" id="newP" minlength="6" autocomplete="new-password" required>
-          </label>
-          <label>Confirm New Password
-            <input type="password" id="confP" minlength="6" autocomplete="new-password" required>
-          </label>
-          <button class="btn cyan" type="submit" style="margin-top:8px">Update Password</button>
+        <h2>🔒 Change Password</h2>
+        <form id="pwdF" class="grid">
+          <label>Current Password <input type="password" id="curP" autocomplete="current-password" required></label>
+          <label>New Password <input type="password" id="newP" minlength="6" autocomplete="new-password" required></label>
+          <label>Confirm New Password <input type="password" id="confP" minlength="6" autocomplete="new-password" required></label>
+          <div class="errmsg" id="pwdMsg"></div>
+          <button class="btn cyan" type="submit">Update Password</button>
         </form>
       </div>
     </div>
@@ -386,485 +390,480 @@ textarea{resize:vertical;min-height:90px}
 <script>
 const API = "https://iqdzokybhggiilzscnxv.supabase.co/functions/v1/shop-admin";
 let TOKEN = localStorage.getItem("astro_admin_token");
-let CURRENT_ADMIN = JSON.parse(localStorage.getItem("astro_admin_user") || "null");
+let ME = JSON.parse(localStorage.getItem("astro_admin_user") || "null");
+
+// Active chat state
+let activeConvId = null;
+let chatLastSince = new Date(0).toISOString();
+let chatPollTimer = null;
+let convPollTimer = null;
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 
-function toast(msg, isErr = false) {
+function toast(msg, err = false) {
   const t = $("#toast");
   t.textContent = msg;
-  t.style.borderColor = isErr ? "var(--red)" : "var(--cyan)";
+  t.style.borderColor = err ? "var(--red)" : "var(--cyan)";
   t.style.display = "flex";
-  setTimeout(() => { t.style.display = "none"; }, 3200);
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.style.display = "none", 3400);
 }
 
 async function api(path, method = "GET", body = null) {
-  const headers = { "Content-Type": "application/json" };
-  if (TOKEN) headers["Authorization"] = "Bearer " + TOKEN;
-
+  const h = { "Content-Type": "application/json" };
+  if (TOKEN) h["Authorization"] = "Bearer " + TOKEN;
   try {
-    const res = await fetch(API + path, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : null,
-    });
-    if (res.status === 401) {
-      logout();
+    const r = await fetch(API + path, { method, headers: h, body: body ? JSON.stringify(body) : null });
+    if (r.status === 401 || r.status === 403) {
+      const d = await r.json();
+      if (r.status === 401) { logout(); return null; }
+      toast(d.error || "Forbidden", true);
       return null;
     }
-    return await res.json();
-  } catch (err) {
-    console.error("API Error:", err);
-    toast("Network error. Please try again.", true);
-    return null;
-  }
+    return await r.json();
+  } catch { toast("Network error", true); return null; }
 }
 
-// Authentication
+// ── AUTH ──────────────────────────────────────────────────────────────────
 function checkAuth() {
-  if (TOKEN && CURRENT_ADMIN) {
+  if (TOKEN && ME) {
     $("#login-modal").style.display = "none";
     $("#app").style.display = "block";
-    $("#uName").textContent = CURRENT_ADMIN.display_name || CURRENT_ADMIN.username;
-    $("#uUser").textContent = "@" + CURRENT_ADMIN.username;
-    $("#uRole").textContent = CURRENT_ADMIN.role || "Admin";
-    if ($("#profName")) $("#profName").value = CURRENT_ADMIN.display_name || "";
-    if ($("#profUser")) $("#profUser").value = CURRENT_ADMIN.username || "";
+    $("#uName").textContent = ME.display_name || ME.username;
+    $("#uUser").textContent = "@" + ME.username;
+    $("#uRole").textContent = ME.role || "Staff";
+    if ($("#profName")) { $("#profName").value = ME.display_name || ""; }
+    if ($("#profUser")) { $("#profUser").value = ME.username || ""; }
+    // Show owner-only controls
+    const isOwner = ME.role === "Owner";
+    if ($("#btnAddAdmin")) $("#btnAddAdmin").style.display = isOwner ? "flex" : "none";
     initDashboard();
+    startPolling();
   } else {
+    stopPolling();
     $("#login-modal").style.display = "grid";
     $("#app").style.display = "none";
-    $("#logU").value = "";
-    $("#logP").value = "";
-    $("#logMsg").textContent = "";
+    if ($("#logU")) { $("#logU").value = ""; $("#logP").value = ""; $("#logMsg").textContent = ""; }
   }
 }
 
 $("#logF").addEventListener("submit", async e => {
   e.preventDefault();
   $("#logMsg").textContent = "Signing in...";
-  const username = $("#logU").value.trim();
-  const password = $("#logP").value;
-
   try {
-    const res = await fetch(API + "/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password })
+    const r = await fetch(API + "/login", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: $("#logU").value.trim(), password: $("#logP").value })
     });
-    const data = await res.json();
-    if (data.ok) {
-      TOKEN = data.token;
-      CURRENT_ADMIN = data.admin;
+    const d = await r.json();
+    if (d.ok) {
+      TOKEN = d.token; ME = d.admin;
       localStorage.setItem("astro_admin_token", TOKEN);
-      localStorage.setItem("astro_admin_user", JSON.stringify(CURRENT_ADMIN));
+      localStorage.setItem("astro_admin_user", JSON.stringify(ME));
       $("#logP").value = "";
       checkAuth();
-    } else {
-      $("#logMsg").textContent = data.error || "Login failed";
-    }
-  } catch (err) {
-    $("#logMsg").textContent = "Network error. Check connection.";
-  }
+    } else { $("#logMsg").textContent = d.error || "Login failed"; }
+  } catch { $("#logMsg").textContent = "Network error"; }
 });
 
 function logout() {
-  TOKEN = null;
-  CURRENT_ADMIN = null;
+  TOKEN = null; ME = null;
   localStorage.removeItem("astro_admin_token");
   localStorage.removeItem("astro_admin_user");
-  $("#logU").value = "";
-  $("#logP").value = "";
-  $("#logMsg").textContent = "";
   checkAuth();
 }
 $("#btnLogout").addEventListener("click", logout);
 
-// Tabs navigation
-$$(".tab-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    $$(".tab-btn").forEach(b => b.classList.remove("active"));
-    $$(".tab-pane").forEach(p => p.style.display = "none");
-    btn.classList.add("active");
-    const target = $("#" + btn.dataset.tab);
-    if (target) target.style.display = "block";
+// ── TABS ─────────────────────────────────────────────────────────────────
+$$(".tab-btn").forEach(btn => btn.addEventListener("click", () => {
+  $$(".tab-btn").forEach(b => b.classList.remove("active"));
+  $$(".tab-pane").forEach(p => p.style.display = "none");
+  btn.classList.add("active");
+  const t = $("#" + btn.dataset.tab);
+  if (t) t.style.display = "block";
+  if (btn.dataset.tab === "tab-bookings") loadBookings();
+  if (btn.dataset.tab === "tab-requests") loadRequests();
+  if (btn.dataset.tab === "tab-reviews") loadReviews();
+  if (btn.dataset.tab === "tab-catalog") loadCatalog();
+  if (btn.dataset.tab === "tab-chat") { loadConversations(); startChatPoll(); }
+  if (btn.dataset.tab === "tab-team") loadAdmins();
+}));
 
-    if (btn.dataset.tab === "tab-bookings") loadBookings();
-    if (btn.dataset.tab === "tab-requests") loadRequests();
-    if (btn.dataset.tab === "tab-reviews") loadReviews();
-    if (btn.dataset.tab === "tab-catalog") loadCatalog();
-  });
-});
-
-// Initialization
-async function initDashboard() {
-  loadStats();
-  loadAdmins();
-}
+// ── INIT ─────────────────────────────────────────────────────────────────
+function initDashboard() { loadStats(); loadAdminsOverview(); }
 
 async function loadStats() {
-  const res = await api("/stats");
-  if (res && res.ok) {
-    const s = res.stats;
-    $("#sCat").textContent = s.catalog;
-    $("#sBkPending").textContent = s.bookingsPending;
-    $("#sBkTotal").textContent = s.bookingsTotal;
-    $("#sReqNew").textContent = s.requestsNew;
-    $("#sReqTotal").textContent = s.requestsTotal;
-    $("#sRvPending").textContent = s.reviewsPending;
-    $("#sRvTotal").textContent = s.reviewsTotal;
-
-    if (s.bookingsPending > 0) {
-      $("#bPendingCount").textContent = s.bookingsPending;
-      $("#bPendingCount").style.display = "inline";
-    } else $("#bPendingCount").style.display = "none";
-
-    if (s.requestsNew > 0) {
-      $("#rNewCount").textContent = s.requestsNew;
-      $("#rNewCount").style.display = "inline";
-    } else $("#rNewCount").style.display = "none";
-
-    if (s.reviewsPending > 0) {
-      $("#rvPendingCount").textContent = s.reviewsPending;
-      $("#rvPendingCount").style.display = "inline";
-    } else $("#rvPendingCount").style.display = "none";
-  }
+  const r = await api("/stats");
+  if (!r?.ok) return;
+  const s = r.stats;
+  $("#sCat").textContent = s.catalog;
+  $("#sBkP").textContent = s.bookingsPending; $("#sBkT").textContent = s.bookingsTotal;
+  $("#sReqN").textContent = s.requestsNew; $("#sReqT").textContent = s.requestsTotal;
+  $("#sRvP").textContent = s.reviewsPending; $("#sRvT").textContent = s.reviewsTotal;
+  $("#sChat").textContent = s.chatOpen;
+  setBadge("bBadge", s.bookingsPending);
+  setBadge("rBadge", s.requestsNew);
+  setBadge("rvBadge", s.reviewsPending);
+  setBadge("chatBadge", s.chatOpen);
 }
 
-async function loadAdmins() {
-  const res = await api("/admins");
-  if (res && res.ok) {
-    const box = $("#adminsList");
-    box.replaceChildren();
-    res.data.forEach(a => {
-      const d = document.createElement("div");
-      d.className = "pill";
-      d.style.display = "flex";
-      d.style.justifyContent = "space-between";
-      d.innerHTML = `<span>👤 <b>${a.display_name}</b> (@${a.username})</span> <span class="tag confirmed">${a.role}</span>`;
-      box.appendChild(d);
-    });
-  }
+function setBadge(id, count) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = count; el.style.display = count > 0 ? "inline" : "none";
 }
 
-// Bookings
-async function loadBookings() {
-  const box = $("#bkRows");
-  const res = await api("/bookings");
-  if (!res || !res.ok) return;
+async function loadAdminsOverview() {
+  const r = await api("/admins");
+  if (!r?.ok) return;
+  const box = $("#overviewAdmins");
   box.replaceChildren();
+  r.data.forEach(a => {
+    const isOnline = a.last_seen && (Date.now() - new Date(a.last_seen).getTime()) < 5 * 60 * 1000;
+    const d = document.createElement("div");
+    d.style.cssText = "display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--card);border-radius:10px;border:1px solid var(--line)";
+    d.innerHTML = `<span class="online-dot ${isOnline ? 'online' : ''}"></span>
+      <span style="font-weight:600">${a.display_name}</span>
+      <span style="color:var(--mut);font-size:12px">@${a.username}</span>
+      <span class="tag ${a.blocked ? 'blocked' : 'confirmed'}" style="margin-left:auto">${a.blocked ? '🔴 Blocked' : a.role}</span>`;
+    box.appendChild(d);
+  });
+}
 
-  if (!res.data.length) {
-    box.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--mut)">No bookings yet.</td></tr>';
-    return;
-  }
-
-  res.data.forEach(b => {
+// ── BOOKINGS ─────────────────────────────────────────────────────────────
+async function loadBookings() {
+  const r = await api("/bookings");
+  if (!r?.ok) return;
+  const box = $("#bkRows");
+  box.replaceChildren();
+  if (!r.data.length) { box.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--mut)">No bookings yet.</td></tr>'; return; }
+  r.data.forEach(b => {
     const tr = document.createElement("tr");
-    const waText = encodeURIComponent(`Hi ${b.name}, this is Astro World Cyber regarding your ${b.service} booking on ${b.date} at ${b.time}.`);
-    const waUrl = `https://wa.me/${b.phone.replace(/[^0-9]/g,"")}?text=${waText}`;
-
+    const phone = b.phone?.replace(/[^0-9]/g, "") || "";
+    const wa = phone ? `https://wa.me/${phone.startsWith("0") ? "254" + phone.slice(1) : phone}?text=${encodeURIComponent(`Hi ${b.name}, this is Astro World Cyber regarding your ${b.service} booking on ${b.date} at ${b.time}.`)}` : "";
     tr.innerHTML = `
       <td><b>${b.date}</b><br><small style="color:var(--mut)">${b.time}</small></td>
       <td><b>${b.name}</b></td>
-      <td><a href="${waUrl}" target="_blank" class="btn wa sm" style="text-decoration:none">💬 ${b.phone}</a></td>
+      <td>${wa ? `<a href="${wa}" target="_blank" class="btn wa sm">💬 ${b.phone}</a>` : (b.phone || "—")}</td>
       <td>${b.service}</td>
-      <td style="max-width:200px;color:var(--mut)"><small>${b.notes || "—"}</small></td>
-      <td>
-        <select onchange="updateBookingStatus('${b.id}', this.value)" style="padding:4px 8px;font-size:12px">
-          <option value="new" ${b.status==='new'?'selected':''}>🟡 New</option>
-          <option value="confirmed" ${b.status==='confirmed'?'selected':''}>🔵 Confirmed</option>
-          <option value="completed" ${b.status==='completed'?'selected':''}>🟢 Completed</option>
-          <option value="cancelled" ${b.status==='cancelled'?'selected':''}>🔴 Cancelled</option>
-        </select>
-      </td>
-      <td>
-        <button class="btn danger sm" onclick="deleteBooking('${b.id}')">🗑</button>
-      </td>
-    `;
+      <td style="color:var(--mut);max-width:180px"><small>${b.notes || "—"}</small></td>
+      <td><select onchange="patchBooking('${b.id}',this.value)" style="padding:4px 7px;font-size:12px">
+        <option value="new" ${b.status==="new"?"selected":""}>🟡 New</option>
+        <option value="confirmed" ${b.status==="confirmed"?"selected":""}>🔵 Confirmed</option>
+        <option value="completed" ${b.status==="completed"?"selected":""}>🟢 Done</option>
+        <option value="cancelled" ${b.status==="cancelled"?"selected":""}>🔴 Cancelled</option>
+      </select></td>
+      <td><button class="btn danger sm" onclick="del('bookings','${b.id}',loadBookings)">🗑</button></td>`;
     box.appendChild(tr);
   });
 }
+window.patchBooking = async (id, status) => { const r = await api("/bookings","PATCH",{id,status}); if(r?.ok){toast("Booking updated");loadStats();} };
 
-window.updateBookingStatus = async (id, status) => {
-  const res = await api("/bookings", "PATCH", { id, status });
-  if (res && res.ok) { toast("Booking updated"); loadStats(); }
-};
-
-window.deleteBooking = async id => {
-  if (!confirm("Are you sure you want to delete this booking?")) return;
-  const res = await api("/bookings", "DELETE", { id });
-  if (res && res.ok) { toast("Booking deleted"); loadBookings(); loadStats(); }
-};
-
-// Requests
+// ── REQUESTS ─────────────────────────────────────────────────────────────
 async function loadRequests() {
+  const r = await api("/requests");
+  if (!r?.ok) return;
   const box = $("#reqRows");
-  const res = await api("/requests");
-  if (!res || !res.ok) return;
   box.replaceChildren();
-
-  if (!res.data.length) {
-    box.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--mut)">No requests yet.</td></tr>';
-    return;
-  }
-
-  res.data.forEach(r => {
+  if (!r.data.length) { box.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--mut)">No requests yet.</td></tr>'; return; }
+  r.data.forEach(b => {
     const tr = document.createElement("tr");
-    const d = new Date(r.created_at).toLocaleDateString();
-    let phoneCell = '<span style="color:var(--mut)">Not provided</span>';
-    if (r.phone) {
-      const waText = encodeURIComponent(`Hi ${r.name}, your requested title "${r.title}" is ready at Astro World Cyber!`);
-      const waUrl = `https://wa.me/${r.phone.replace(/[^0-9]/g,"")}?text=${waText}`;
-      phoneCell = `<a href="${waUrl}" target="_blank" class="btn wa sm">💬 ${r.phone}</a>`;
-    }
-
+    const d = new Date(b.created_at).toLocaleDateString();
+    const phone = b.phone?.replace(/[^0-9]/g,"") || "";
+    const wa = phone ? `https://wa.me/${phone.startsWith("0")?"254"+phone.slice(1):phone}?text=${encodeURIComponent(`Hi ${b.name}, your requested title "${b.title}" is ready at Astro World Cyber!`)}` : "";
     tr.innerHTML = `
-      <td>${d}</td>
-      <td><b>${r.name}</b></td>
-      <td>${phoneCell}</td>
-      <td><b style="color:var(--cyan)">${r.title}</b></td>
-      <td><span class="tag new">${r.kind || "movie"}</span></td>
-      <td>
-        <select onchange="updateRequestStatus('${r.id}', this.value)" style="padding:4px 8px;font-size:12px">
-          <option value="new" ${r.status==='new'?'selected':''}>🟡 New</option>
-          <option value="ready" ${r.status==='ready'?'selected':''}>🟢 Ready</option>
-          <option value="completed" ${r.status==='completed'?'selected':''}>✅ Done</option>
-        </select>
-      </td>
-      <td>
-        <button class="btn danger sm" onclick="deleteRequest('${r.id}')">🗑</button>
-      </td>
-    `;
+      <td>${d}</td><td><b>${b.name}</b></td>
+      <td>${wa ? `<a href="${wa}" target="_blank" class="btn wa sm">💬 ${b.phone}</a>` : (b.phone||"—")}</td>
+      <td><b style="color:var(--cyan)">${b.title}</b></td>
+      <td><span class="tag new">${b.kind||"movie"}</span></td>
+      <td><select onchange="patchReq('${b.id}',this.value)" style="padding:4px 7px;font-size:12px">
+        <option value="new" ${b.status==="new"?"selected":""}>🟡 New</option>
+        <option value="ready" ${b.status==="ready"?"selected":""}>🟢 Ready</option>
+        <option value="completed" ${b.status==="completed"?"selected":""}>✅ Done</option>
+      </select></td>
+      <td><button class="btn danger sm" onclick="del('requests','${b.id}',loadRequests)">🗑</button></td>`;
     box.appendChild(tr);
   });
 }
+window.patchReq = async (id,status) => { const r = await api("/requests","PATCH",{id,status}); if(r?.ok){toast("Updated");loadStats();} };
 
-window.updateRequestStatus = async (id, status) => {
-  const res = await api("/requests", "PATCH", { id, status });
-  if (res && res.ok) { toast("Request updated"); loadStats(); }
-};
-
-window.deleteRequest = async id => {
-  if (!confirm("Are you sure you want to delete this request?")) return;
-  const res = await api("/requests", "DELETE", { id });
-  if (res && res.ok) { toast("Request deleted"); loadRequests(); loadStats(); }
-};
-
-// Reviews
+// ── REVIEWS ──────────────────────────────────────────────────────────────
 async function loadReviews() {
+  const r = await api("/reviews");
+  if (!r?.ok) return;
   const box = $("#rvRows");
-  const res = await api("/reviews");
-  if (!res || !res.ok) return;
   box.replaceChildren();
-
-  if (!res.data.length) {
-    box.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--mut)">No reviews yet.</td></tr>';
-    return;
-  }
-
-  res.data.forEach(rv => {
+  if (!r.data.length) { box.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--mut)">No reviews yet.</td></tr>'; return; }
+  r.data.forEach(rv => {
     const tr = document.createElement("tr");
-    const d = new Date(rv.created_at).toLocaleDateString();
-    const stars = "★".repeat(rv.rating) + "☆".repeat(Math.max(0, 5 - rv.rating));
-
+    const stars = "★".repeat(rv.rating) + "☆".repeat(Math.max(0, 5-rv.rating));
     tr.innerHTML = `
-      <td>${d}</td>
+      <td>${new Date(rv.created_at).toLocaleDateString()}</td>
       <td><b>${rv.name}</b></td>
       <td style="color:var(--yel);letter-spacing:2px">${stars}</td>
-      <td style="color:var(--mut);max-width:300px">${rv.body}</td>
-      <td>
-        <span class="tag ${rv.approved ? 'completed':'new'}">
-          ${rv.approved ? 'Live (Approved)' : 'Pending Review'}
-        </span>
-      </td>
+      <td style="color:var(--mut);max-width:280px">${rv.body}</td>
+      <td><span class="tag ${rv.approved?"approved":"pending"}">${rv.approved?"Live":"Pending"}</span></td>
       <td style="white-space:nowrap">
-        <button class="btn ${rv.approved ? 'alt':'grn'} sm" onclick="toggleReview('${rv.id}', ${!rv.approved})">
-          ${rv.approved ? 'Hide' : '✅ Approve'}
-        </button>
-        <button class="btn danger sm" onclick="deleteReview('${rv.id}')">🗑</button>
-      </td>
-    `;
+        <button class="btn ${rv.approved?"alt":"grn"} sm" onclick="toggleRv('${rv.id}',${!rv.approved})">${rv.approved?"Hide":"✅ Approve"}</button>
+        <button class="btn danger sm" onclick="del('reviews','${rv.id}',loadReviews)">🗑</button>
+      </td>`;
     box.appendChild(tr);
   });
 }
+window.toggleRv = async (id,approved) => { const r = await api("/reviews","PATCH",{id,approved}); if(r?.ok){toast(approved?"Approved!":"Hidden");loadReviews();loadStats();} };
 
-window.toggleReview = async (id, approved) => {
-  const res = await api("/reviews", "PATCH", { id, approved });
-  if (res && res.ok) { toast(approved ? "Review approved!" : "Review hidden"); loadReviews(); loadStats(); }
-};
-
-window.deleteReview = async id => {
-  if (!confirm("Delete this review permanently?")) return;
-  const res = await api("/reviews", "DELETE", { id });
-  if (res && res.ok) { toast("Review deleted"); loadReviews(); loadStats(); }
-};
-
-// Catalog
-let ALL_CATALOG = [];
+// ── CATALOG ──────────────────────────────────────────────────────────────
+let CAT_DATA = [];
 async function loadCatalog() {
-  const box = $("#catList");
-  const res = await api("/catalog");
-  if (!res || !res.ok) return;
-  ALL_CATALOG = res.data;
-  $("#catTotal").textContent = ALL_CATALOG.length;
-  renderCatalog(ALL_CATALOG);
+  const r = await api("/catalog");
+  if (!r?.ok) return;
+  CAT_DATA = r.data;
+  $("#catTotal").textContent = CAT_DATA.length;
+  renderCatalog(CAT_DATA);
 }
-
 function renderCatalog(items) {
   const box = $("#catList");
   box.replaceChildren();
-  if (!items.length) {
-    box.innerHTML = '<div style="color:var(--mut);padding:20px">No titles match.</div>';
-    return;
-  }
-
+  if (!items.length) { box.innerHTML = '<div style="color:var(--mut)">No titles.</div>'; return; }
   items.forEach(c => {
-    const card = document.createElement("div");
-    card.className = "cat-item";
-    card.innerHTML = `
-      <div class="cat-thumb">
-        ${c.img ? `<img src="${c.img}" alt="${c.title}" loading="lazy">` : '<div style="padding:40px 10px;text-align:center;color:var(--mut)">No image</div>'}
-        ${c.trending ? '<span class="badge-admin" style="position:absolute;top:8px;left:8px;background:var(--pink)">🔥 Trending</span>' : ''}
-      </div>
+    const el = document.createElement("div");
+    el.className = "cat-item";
+    el.innerHTML = `
+      <div class="cat-thumb">${c.img ? `<img src="${c.img}" alt="${c.title}" loading="lazy">` : `<div style="padding:40px 0;text-align:center;color:var(--mut)">No image</div>`}
+        ${c.trending ? '<span class="badge admin" style="position:absolute;top:7px;left:7px">🔥</span>' : ''}</div>
       <div class="cat-body">
         <div class="cat-title">${c.title}</div>
         <div class="cat-subt">${c.subtitle || c.category.toUpperCase()}</div>
-        <div class="cat-genres">${(c.genres || []).join(", ")}</div>
+        <div class="cat-genres">${(c.genres||[]).join(", ")}</div>
         <div class="cat-actions">
-          <button class="btn ${c.trending ? 'alt':'cyan'} sm" style="flex:1" onclick="toggleTrending('${c.id}', ${!c.trending})">
-            ${c.trending ? 'Untrend' : '🔥 Trend'}
-          </button>
-          <button class="btn danger sm" onclick="deleteCatalogItem('${c.id}')">🗑</button>
+          <button class="btn ${c.trending?"alt":"cyan"} sm" style="flex:1" onclick="toggleTrend('${c.id}',${!c.trending})">${c.trending?"Untrend":"🔥 Trend"}</button>
+          <button class="btn danger sm" onclick="del('catalog','${c.id}',loadCatalog)">🗑</button>
         </div>
-      </div>
-    `;
-    box.appendChild(card);
+      </div>`;
+    box.appendChild(el);
+  });
+}
+$("#catQ").addEventListener("input", e => {
+  const q = e.target.value.toLowerCase();
+  renderCatalog(q ? CAT_DATA.filter(c => (c.title + " " + (c.genres||[]).join(" ")).toLowerCase().includes(q)) : CAT_DATA);
+});
+window.toggleTrend = async (id,trending) => { const r = await api("/catalog","PATCH",{id,trending}); if(r?.ok){toast("Updated");loadCatalog();} };
+
+// Publish form
+$("#addCatF").addEventListener("submit", async e => {
+  e.preventDefault();
+  toast("Publishing...");
+  const r = await api("/catalog","POST",{
+    title:$("#cTitle").value, subtitle:$("#cSub").value, category:$("#cCat").value,
+    genres:$("#cGen").value, image_url:$("#cImg").value, description:$("#cDesc").value,
+    trending:$("#cTrend").checked, announce_telegram:$("#cTg").checked
+  });
+  if (r?.ok) { toast("Published!"); $("#addCatF").reset(); loadCatalog(); loadStats(); }
+  else toast(r?.error || "Failed", true);
+});
+
+// ── BOT ───────────────────────────────────────────────────────────────────
+$("#quickBotF").addEventListener("submit", async e => {
+  e.preventDefault();
+  toast("Sending...");
+  const r = await api("/bot/send","POST",{message:$("#qBotMsg").value});
+  if(r?.ok){toast("Sent!"); $("#qBotMsg").value="";}
+  else toast("Failed",true);
+});
+$("#customTgF").addEventListener("submit", async e => {
+  e.preventDefault();
+  toast("Posting...");
+  const r = await api("/bot/send","POST",{message:$("#tgMsg").value,photo_url:$("#tgPhoto").value});
+  if(r?.ok){toast("Posted!"); $("#customTgF").reset();}
+  else toast("Failed",true);
+});
+
+// ── LIVE CHAT ─────────────────────────────────────────────────────────────
+let CONVS = [];
+async function loadConversations() {
+  const r = await api("/chat/conversations");
+  if (!r?.ok) return;
+  CONVS = r.data;
+  const box = $("#convItems");
+  box.replaceChildren();
+  if (!CONVS.length) { box.innerHTML = '<div style="padding:16px;color:var(--mut);font-size:13px">No chats yet.</div>'; return; }
+  CONVS.forEach(c => {
+    const el = document.createElement("div");
+    el.className = "conv-item" + (c.id === activeConvId ? " active" : "");
+    el.dataset.cid = c.id;
+    el.innerHTML = `<div class="cname">${c.customer_name}
+      ${c.status==="open"?'<span class="cbadge">●</span>':''}</div>
+      <div class="ctime">${new Date(c.updated_at||c.created_at).toLocaleString()} · <span class="tag ${c.status}">${c.status}</span></div>`;
+    el.addEventListener("click", () => openConversation(c));
+    box.appendChild(el);
   });
 }
 
-$("#catSearch").addEventListener("input", e => {
-  const q = e.target.value.toLowerCase().trim();
-  const filtered = ALL_CATALOG.filter(c => (c.title + " " + (c.genres || []).join(" ")).toLowerCase().includes(q));
-  renderCatalog(filtered);
-});
+function openConversation(conv) {
+  activeConvId = conv.id;
+  chatLastSince = new Date(0).toISOString();
+  $("#chatNoSel").style.display = "none";
+  $("#chatActive").style.display = "flex";
+  $("#chatCName").textContent = conv.customer_name;
+  $("#chatCStatus").textContent = conv.status;
+  $("#chatMsgs").replaceChildren();
+  loadConversations();
+  pollChatMessages();
+}
 
-window.toggleTrending = async (id, trending) => {
-  const res = await api("/catalog", "PATCH", { id, trending });
-  if (res && res.ok) { toast("Trending updated"); loadCatalog(); }
+async function pollChatMessages() {
+  if (!activeConvId) return;
+  const r = await api(`/chat/messages?conversation_id=${activeConvId}&since=${encodeURIComponent(chatLastSince)}`);
+  if (r?.ok && r.messages.length) {
+    r.messages.forEach(m => appendMsg(m));
+    chatLastSince = r.messages[r.messages.length - 1].created_at;
+    const box = $("#chatMsgs");
+    box.scrollTop = box.scrollHeight;
+  }
+}
+
+function appendMsg(m) {
+  const box = $("#chatMsgs");
+  const wrap = document.createElement("div");
+  const isAdmin = m.sender === "admin";
+  wrap.innerHTML = `<div class="msg-meta ${isAdmin?"right":""}">${m.sender_name} · ${new Date(m.created_at).toLocaleTimeString()}</div>
+    <div class="msg-bubble ${m.sender}">${m.text.replace(/</g,"&lt;").replace(/\n/g,"<br>")}</div>`;
+  box.appendChild(wrap);
+}
+
+async function sendReply() {
+  const text = ($("#replyText").value || "").trim();
+  if (!text || !activeConvId) return;
+  $("#replyText").value = "";
+  const r = await api("/chat/reply","POST",{conversation_id:activeConvId,text});
+  if(r?.ok) pollChatMessages();
+  else toast("Failed to send reply",true);
+}
+$("#replyText").addEventListener("keydown", e => { if(e.key==="Enter" && !e.shiftKey){e.preventDefault();sendReply();} });
+
+async function closeConversation() {
+  if (!activeConvId) return;
+  if (!confirm("Close this chat conversation?")) return;
+  await api("/chat/close","POST",{conversation_id:activeConvId});
+  toast("Conversation closed");
+  activeConvId = null;
+  $("#chatNoSel").style.display = "grid";
+  $("#chatActive").style.display = "none";
+  loadConversations();
+}
+
+function startChatPoll() { clearInterval(chatPollTimer); chatPollTimer = setInterval(pollChatMessages, 3000); }
+function stopChatPoll() { clearInterval(chatPollTimer); }
+
+// ── TEAM (ADMIN MANAGEMENT) ───────────────────────────────────────────────
+async function loadAdmins() {
+  const r = await api("/admins");
+  if (!r?.ok) return;
+  const isOwner = ME?.role === "Owner";
+  const box = $("#adminList");
+  box.replaceChildren();
+  r.data.forEach(a => {
+    const isOnline = a.last_seen && (Date.now() - new Date(a.last_seen).getTime()) < 5 * 60 * 1000;
+    const isSelf = a.id === ME?.id;
+    const row = document.createElement("div");
+    row.className = "admin-row" + (a.blocked ? " blocked-row" : "");
+    row.innerHTML = `
+      <span class="online-dot ${isOnline?"online":""}"></span>
+      <div class="admin-info">
+        <div style="font-weight:700">${a.display_name} ${isSelf ? '<span class="badge admin" style="font-size:10px;padding:2px 7px">You</span>' : ''}</div>
+        <div style="font-size:12px;color:var(--mut)">@${a.username} · ${a.role}</div>
+        ${a.last_seen ? `<div style="font-size:11px;color:var(--mut)">Last seen: ${new Date(a.last_seen).toLocaleString()}</div>` : ''}
+      </div>
+      <div class="admin-actions">
+        ${isOwner && !isSelf ? `
+          ${a.blocked
+            ? `<button class="btn grn sm" onclick="adminAction('unblock','${a.id}','${a.display_name}')">✅ Unblock</button>`
+            : `<button class="btn yel sm" onclick="adminAction('block','${a.id}','${a.display_name}')">🔒 Block</button>`}
+          <button class="btn alt sm" onclick="adminAction('force-logout','${a.id}','${a.display_name}')">⏏ Logout</button>
+          <button class="btn danger sm" onclick="adminAction('delete','${a.id}','${a.display_name}')">🗑 Delete</button>
+        ` : ""}
+        <span class="tag ${a.blocked?"blocked":isOnline?"confirmed":"pending"}">${a.blocked?"Blocked":isOnline?"Online":"Offline"}</span>
+      </div>`;
+    box.appendChild(row);
+  });
+  loadAdminsOverview();
+}
+
+window.adminAction = async (action, id, name) => {
+  const labels = { block:"Block", unblock:"Unblock", delete:"Delete", "force-logout":"Force Logout" };
+  if (!confirm(`Are you sure you want to ${labels[action]} ${name}?`)) return;
+  const r = await api(`/admin/${action}`,"POST",{id});
+  if (r?.ok) { toast(`${name} ${labels[action]}ed`); loadAdmins(); }
+  else toast(r?.error || "Failed", true);
 };
 
-window.deleteCatalogItem = async id => {
-  if (!confirm("Are you sure you want to delete this title?")) return;
-  const res = await api("/catalog", "DELETE", { id });
-  if (res && res.ok) { toast("Title deleted"); loadCatalog(); loadStats(); }
-};
+// Add admin modal
+function openAddAdmin() { $("#addAdminOverlay").style.display = "grid"; }
+function closeAddAdmin() { $("#addAdminOverlay").style.display = "none"; $("#addAdminF").reset(); $("#aaMsg").textContent = ""; }
+$("#addAdminOverlay").addEventListener("click", e => { if(e.target === $("#addAdminOverlay")) closeAddAdmin(); });
 
-// Add Poster Form
-$("#addCatF").addEventListener("submit", async e => {
+$("#addAdminF").addEventListener("submit", async e => {
   e.preventDefault();
-  const payload = {
-    title: $("#cTitle").value,
-    subtitle: $("#cSub").value,
-    category: $("#cCat").value,
-    genres: $("#cGen").value,
-    image_url: $("#cImg").value,
-    description: $("#cDesc").value,
-    trending: $("#cTrend").checked,
-    announce_telegram: $("#cTgAnnounce").checked,
-  };
-
-  toast("Publishing title...");
-  const res = await api("/catalog", "POST", payload);
-  if (res && res.ok) {
-    toast("Title published & announced!");
-    $("#addCatF").reset();
-    loadCatalog();
-    loadStats();
-  } else {
-    toast(res ? res.error : "Failed to publish", true);
-  }
+  $("#aaMsg").textContent = "Creating...";
+  const r = await api("/admin/add","POST",{
+    display_name:$("#aaName").value, username:$("#aaUser").value,
+    role:$("#aaRole").value, password:$("#aaPass").value
+  });
+  if (r?.ok) { toast("Admin account created!"); closeAddAdmin(); loadAdmins(); }
+  else { $("#aaMsg").textContent = r?.error || "Failed"; }
 });
 
-// Bot forms
-$("#quickBotF").addEventListener("submit", async e => {
-  e.preventDefault();
-  const msg = $("#qBotMsg").value;
-  toast("Sending to Telegram...");
-  const res = await api("/bot/send", "POST", { message: msg });
-  if (res && res.ok) {
-    toast("Alert sent to Telegram!");
-    $("#qBotMsg").value = "";
-  } else {
-    toast("Failed to send message", true);
-  }
-});
-
-$("#customTgF").addEventListener("submit", async e => {
-  e.preventDefault();
-  const message = $("#tgMsg").value;
-  const photo_url = $("#tgPhoto").value;
-  toast("Posting to Telegram...");
-  const res = await api("/bot/send", "POST", { message, photo_url });
-  if (res && res.ok) {
-    toast("Posted to Telegram successfully!");
-    $("#customTgF").reset();
-  } else {
-    toast("Failed to post", true);
-  }
-});
-
-// Profile update
+// ── PROFILE / PASSWORD ────────────────────────────────────────────────────
 $("#profF").addEventListener("submit", async e => {
   e.preventDefault();
-  const display_name = $("#profName").value.trim();
-  const username = $("#profUser").value.trim().toLowerCase();
-
-  toast("Updating profile...");
-  const res = await api("/update-profile", "POST", { display_name, username });
-  if (res && res.ok) {
-    CURRENT_ADMIN = res.admin;
-    TOKEN = res.token;
-    localStorage.setItem("astro_admin_token", TOKEN);
-    localStorage.setItem("astro_admin_user", JSON.stringify(CURRENT_ADMIN));
-    $("#uName").textContent = CURRENT_ADMIN.display_name;
-    $("#uUser").textContent = "@" + CURRENT_ADMIN.username;
-    toast("Profile updated successfully!");
+  $("#profMsg").textContent = "";
+  const r = await api("/update-profile","POST",{display_name:$("#profName").value.trim(),username:$("#profUser").value.trim()});
+  if(r?.ok){
+    ME = r.admin; TOKEN = r.token;
+    localStorage.setItem("astro_admin_token",TOKEN);
+    localStorage.setItem("astro_admin_user",JSON.stringify(ME));
+    $("#uName").textContent = ME.display_name;
+    $("#uUser").textContent = "@"+ME.username;
+    toast("Profile updated!");
     loadAdmins();
-  } else {
-    toast(res ? res.error : "Failed to update profile", true);
-  }
+  } else { $("#profMsg").textContent = r?.error || "Failed"; }
 });
 
-// Password change
 $("#pwdF").addEventListener("submit", async e => {
   e.preventDefault();
-  const curP = $("#curP").value;
-  const newP = $("#newP").value;
-  const confP = $("#confP").value;
-
-  if (newP !== confP) {
-    toast("New passwords do not match", true);
-    return;
-  }
-
-  const res = await api("/change-password", "POST", { current_password: curP, new_password: newP });
-  if (res && res.ok) {
-    toast("Password updated successfully!");
-    $("#pwdF").reset();
-  } else {
-    toast(res ? res.error : "Failed to update password", true);
-  }
+  if($("#newP").value !== $("#confP").value){ $("#pwdMsg").textContent = "Passwords do not match"; return; }
+  const r = await api("/change-password","POST",{current_password:$("#curP").value,new_password:$("#newP").value});
+  if(r?.ok){ toast("Password updated!"); $("#pwdF").reset(); $("#pwdMsg").textContent = ""; }
+  else { $("#pwdMsg").textContent = r?.error||"Failed"; }
 });
 
-/* Starfield Background */
+// ── SHARED DELETE ─────────────────────────────────────────────────────────
+async function del(table, id, reload) {
+  if (!confirm("Delete this item permanently?")) return;
+  const r = await api("/"+table,"DELETE",{id});
+  if(r?.ok){toast("Deleted"); reload(); loadStats();}
+  else toast(r?.error||"Failed",true);
+}
+
+// ── POLLING ───────────────────────────────────────────────────────────────
+function startPolling() {
+  clearInterval(convPollTimer);
+  convPollTimer = setInterval(() => {
+    loadStats();
+    if (activeConvId) pollChatMessages();
+    else if (document.getElementById("tab-chat")?.style.display !== "none") loadConversations();
+  }, 8000);
+}
+function stopPolling() { clearInterval(convPollTimer); clearInterval(chatPollTimer); }
+
+// ── STARFIELD ─────────────────────────────────────────────────────────────
 (function(){
-  const c = $("#stars"), x = c.getContext("2d"), calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let st = [];
-  function size(){ c.width = innerWidth; c.height = innerHeight; st = Array.from({length:Math.round(innerWidth*innerHeight/9000)},()=>({x:Math.random()*c.width,y:Math.random()*c.height,r:Math.random()*1.4+.3,p:Math.random()*6.28,s:Math.random()*.02+.005})); }
-  function draw(){ x.clearRect(0,0,c.width,c.height); x.fillStyle="#fff"; for(const s of st){ s.p+=s.s; x.globalAlpha=.3+.7*Math.abs(Math.sin(s.p)); x.beginPath(); x.arc(s.x,s.y,s.r,0,6.28); x.fill(); } if(!calm) requestAnimationFrame(draw); }
-  addEventListener("resize",()=>{ size(); if(calm) draw(); }); size(); draw();
+  const c=$("#stars"),x=c.getContext("2d"),calm=matchMedia("(prefers-reduced-motion:reduce)").matches;
+  let st=[];
+  function size(){c.width=innerWidth;c.height=innerHeight;st=Array.from({length:Math.round(innerWidth*innerHeight/9000)},()=>({x:Math.random()*c.width,y:Math.random()*c.height,r:Math.random()*1.4+.3,p:Math.random()*6.28,s:Math.random()*.02+.005}));}
+  function draw(){x.clearRect(0,0,c.width,c.height);x.fillStyle="#fff";for(const s of st){s.p+=s.s;x.globalAlpha=.3+.7*Math.abs(Math.sin(s.p));x.beginPath();x.arc(s.x,s.y,s.r,0,6.28);x.fill();}if(!calm)requestAnimationFrame(draw);}
+  addEventListener("resize",()=>{size();if(calm)draw();});size();draw();
 })();
 
 checkAuth();
