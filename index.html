@@ -457,5 +457,179 @@ loadFeed();
 /* Loader */
 setTimeout(() => { $("#ld").classList.add("out"); }, matchMedia("(prefers-reduced-motion: reduce)").matches ? 300 : 2500);
 </script>
+
+<!-- ===== CUSTOMER LIVE CHAT WIDGET ===== -->
+<style>
+#cw-btn{position:fixed;bottom:24px;left:24px;z-index:900;background:linear-gradient(135deg,var(--pink),var(--pur));color:#fff;border:none;border-radius:50px;padding:13px 20px;font-family:Outfit,sans-serif;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 24px #ff3d9a66;display:flex;align-items:center;gap:8px;transition:transform .2s,box-shadow .2s}
+#cw-btn:hover{transform:translateY(-2px);box-shadow:0 6px 32px #ff3d9a99}
+#cw-btn .cw-dot{width:9px;height:9px;border-radius:50%;background:var(--grn);box-shadow:0 0 6px var(--grn);animation:cwPulse 2s infinite}
+@keyframes cwPulse{0%,100%{opacity:1}50%{opacity:.4}}
+#cw-box{position:fixed;bottom:80px;left:24px;z-index:901;width:320px;max-height:480px;background:#0d0722;border:1px solid var(--line,#3b2a7a);border-radius:16px;box-shadow:0 8px 40px #000a;display:none;flex-direction:column;overflow:hidden;font-family:Outfit,sans-serif}
+#cw-box.open{display:flex}
+#cw-head{background:linear-gradient(135deg,#1a0a3a,#0d0722);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line,#3b2a7a)}
+#cw-head .cw-title{font-family:Bungee,sans-serif;font-size:14px;color:var(--pink,#ff3d9a);letter-spacing:.05em}
+#cw-head .cw-sub{font-size:11px;color:#a495e4;margin-top:2px}
+#cw-close{background:none;border:none;color:#a495e4;cursor:pointer;font-size:20px;line-height:1;padding:0}
+#cw-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;min-height:160px;max-height:280px}
+#cw-msgs::-webkit-scrollbar{width:4px}
+#cw-msgs::-webkit-scrollbar-thumb{background:#3b2a7a;border-radius:4px}
+.cw-msg{padding:8px 12px;border-radius:12px;font-size:13px;max-width:85%;line-height:1.4;word-break:break-word}
+.cw-msg.me{background:linear-gradient(135deg,#8b5cff33,#ff3d9a22);border:1px solid #8b5cff44;align-self:flex-end;text-align:right}
+.cw-msg.admin{background:#1a0f3d;border:1px solid #3b2a7a;align-self:flex-start}
+.cw-msg .cw-who{font-size:10px;color:#a495e4;margin-bottom:3px;font-weight:600}
+.cw-name-step{padding:16px;display:flex;flex-direction:column;gap:10px}
+.cw-name-step p{margin:0;font-size:13px;color:#a495e4}
+#cw-name-inp{background:#07041a;border:1px solid #3b2a7a;border-radius:8px;padding:9px 12px;color:#f4f0ff;font-family:Outfit,sans-serif;font-size:14px;width:100%;box-sizing:border-box}
+#cw-name-inp:focus{outline:none;border-color:var(--pink,#ff3d9a)}
+#cw-start-btn{background:linear-gradient(90deg,var(--pink,#ff3d9a),var(--pur,#8b5cff));color:#fff;border:none;border-radius:8px;padding:10px;font-family:Outfit,sans-serif;font-size:14px;font-weight:700;cursor:pointer;width:100%}
+#cw-footer{padding:10px 12px;border-top:1px solid #3b2a7a;display:flex;gap:8px}
+#cw-inp{flex:1;background:#07041a;border:1px solid #3b2a7a;border-radius:8px;padding:9px 12px;color:#f4f0ff;font-family:Outfit,sans-serif;font-size:13px;resize:none;min-height:38px;max-height:80px}
+#cw-inp:focus{outline:none;border-color:var(--pink,#ff3d9a)}
+#cw-send{background:linear-gradient(90deg,var(--pink,#ff3d9a),var(--pur,#8b5cff));color:#fff;border:none;border-radius:8px;padding:0 14px;cursor:pointer;font-size:18px;flex-shrink:0}
+#cw-send:disabled{opacity:.4;cursor:default}
+</style>
+
+<!-- Chat toggle button -->
+<button id="cw-btn" onclick="cwToggle()">
+  <span class="cw-dot"></span> 💬 Chat with us
+</button>
+
+<!-- Chat window -->
+<div id="cw-box">
+  <div id="cw-head">
+    <div>
+      <div class="cw-title">🌌 ASTRO WORLD CHAT</div>
+      <div class="cw-sub">We reply within minutes</div>
+    </div>
+    <button id="cw-close" onclick="cwToggle()">✕</button>
+  </div>
+
+  <!-- Step 1: enter name -->
+  <div class="cw-name-step" id="cw-step1">
+    <p>👋 Hey! What's your name so we can help you?</p>
+    <input id="cw-name-inp" placeholder="Your name…" maxlength="40" autocomplete="off">
+    <button id="cw-start-btn" onclick="cwStart()">Start Chat →</button>
+  </div>
+
+  <!-- Step 2: chat -->
+  <div id="cw-step2" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+    <div id="cw-msgs"></div>
+    <div id="cw-footer">
+      <textarea id="cw-inp" rows="1" placeholder="Type a message…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();cwSend()}"></textarea>
+      <button id="cw-send" onclick="cwSend()">➤</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const API = "https://iqdzokybhggiilzscnxv.supabase.co/functions/v1/shop-admin";
+  let cwSessId = localStorage.getItem("cw_session") || null;
+  let cwName   = localStorage.getItem("cw_name")    || null;
+  let cwPollTimer = null;
+  let cwLastTs = 0;
+  let cwOpen = false;
+
+  // Auto-restore session
+  if (cwSessId && cwName) { setTimeout(cwRestore, 400); }
+
+  window.cwToggle = function(){
+    cwOpen = !cwOpen;
+    document.getElementById("cw-box").classList.toggle("open", cwOpen);
+    if (cwOpen && cwSessId) cwScrollBottom();
+  };
+
+  window.cwStart = async function(){
+    const n = document.getElementById("cw-name-inp").value.trim();
+    if (!n) return;
+    cwName = n;
+    cwSessId = "cw-" + Date.now() + "-" + Math.random().toString(36).slice(2,8);
+    localStorage.setItem("cw_session", cwSessId);
+    localStorage.setItem("cw_name", cwName);
+    try {
+      await fetch(API + "/chat/open", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({session_id: cwSessId, name: cwName})
+      });
+    } catch(e){}
+    cwShowChat();
+    cwAddMsg("admin", "Astro World", "Hi " + cwName + "! 👋 How can we help you today?", true);
+    cwStartPoll();
+  };
+
+  function cwRestore(){
+    document.getElementById("cw-step1").style.display = "none";
+    document.getElementById("cw-step2").style.display = "flex";
+    cwStartPoll();
+  }
+
+  function cwShowChat(){
+    document.getElementById("cw-step1").style.display = "none";
+    document.getElementById("cw-step2").style.display = "flex";
+  }
+
+  window.cwSend = async function(){
+    const inp = document.getElementById("cw-inp");
+    const txt = inp.value.trim();
+    if (!txt || !cwSessId) return;
+    inp.value = "";
+    document.getElementById("cw-send").disabled = true;
+    cwAddMsg("me", cwName, txt, true);
+    try {
+      await fetch(API + "/chat/message", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({session_id: cwSessId, text: txt})
+      });
+    } catch(e){}
+    document.getElementById("cw-send").disabled = false;
+  };
+
+  function cwStartPoll(){
+    if (cwPollTimer) return;
+    cwPollTimer = setInterval(cwPoll, 4000);
+    cwPoll();
+  }
+
+  async function cwPoll(){
+    if (!cwSessId) return;
+    try {
+      const r = await fetch(API + "/chat/poll?session_id=" + encodeURIComponent(cwSessId) + "&since=" + cwLastTs);
+      if (!r.ok) return;
+      const data = await r.json();
+      if (data.messages && data.messages.length) {
+        for (const m of data.messages) {
+          if (m.sender !== "customer") {
+            cwAddMsg("admin", m.sender_name || "Astro World", m.text, false);
+          }
+          const ts = new Date(m.created_at).getTime();
+          if (ts > cwLastTs) cwLastTs = ts;
+        }
+      }
+    } catch(e){}
+  }
+
+  function cwAddMsg(type, who, text, scroll){
+    const container = document.getElementById("cw-msgs");
+    const div = document.createElement("div");
+    div.className = "cw-msg " + (type === "me" ? "me" : "admin");
+    div.innerHTML = '<div class="cw-who">' + (type === "me" ? "You" : "✦ " + who) + '</div>' + escHtml(text);
+    container.appendChild(div);
+    if (scroll) cwScrollBottom();
+  }
+
+  function cwScrollBottom(){
+    const m = document.getElementById("cw-msgs");
+    if (m) m.scrollTop = m.scrollHeight;
+  }
+
+  function escHtml(s){
+    return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+})();
+</script>
+<!-- ===== END CUSTOMER CHAT WIDGET ===== -->
+
 </body>
 </html>
