@@ -79,25 +79,60 @@ textarea{resize:vertical;min-height:80px}
 form.grid{display:grid;gap:12px}
 
 /* chat widget */
-.chat-layout{display:grid;grid-template-columns:280px 1fr;height:520px;border:1px solid var(--line);border-radius:var(--rad);overflow:hidden}
-.chat-list{background:#0a0518;border-right:1px solid var(--line);overflow-y:auto;display:flex;flex-direction:column}
-.conv-item{padding:12px 14px;cursor:pointer;border-bottom:1px solid var(--line);transition:background .2s}
-.conv-item:hover,.conv-item.active{background:#1a0f3d}
-.conv-item .cname{font-weight:700;font-size:14px}
-.conv-item .ctime{font-size:11px;color:var(--mut);margin-top:2px}
-.conv-item .cbadge{float:right;background:var(--pink);color:#fff;border-radius:99px;padding:1px 7px;font-size:11px;font-weight:700}
-.chat-main{display:flex;flex-direction:column;background:#07041a}
-.chat-header{padding:12px 16px;background:#0d0722;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px}
-.chat-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+.chat-layout{display:grid;grid-template-columns:300px 1fr;height:600px;overflow:hidden}
+.chat-list{background:#0a0518;border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.chat-list-head{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+.chat-list-head b{color:var(--yel);font-size:13px;flex:1}
+.chat-filters{display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid var(--line)}
+.chat-filters button{flex:1;background:#140c34;border:1px solid var(--line);color:var(--mut);border-radius:99px;padding:5px 0;font:600 12px Outfit,sans-serif;cursor:pointer}
+.chat-filters button.on{background:linear-gradient(90deg,var(--pink),#8b5cff);color:#fff;border-color:transparent}
+#convItems{flex:1;overflow-y:auto;min-height:0}
+.conv-item{padding:11px 14px;cursor:pointer;border-bottom:1px solid #1d1345;transition:background .15s;position:relative;display:flex;gap:10px;align-items:flex-start}
+.conv-item:hover{background:#140c34}
+.conv-item.active{background:#1f1250;box-shadow:inset 3px 0 0 var(--pink)}
+.conv-avatar{width:36px;height:36px;border-radius:50%;flex-shrink:0;display:grid;place-items:center;font-weight:700;color:#fff;background:linear-gradient(135deg,#8b5cff,#ff3d9a)}
+.conv-item.closed .conv-avatar{background:#2a2050;color:var(--mut)}
+.conv-body{flex:1;min-width:0}
+.conv-top{display:flex;align-items:center;gap:6px}
+.conv-item .cname{font-weight:700;font-size:14px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conv-item .ctime{font-size:10px;color:var(--mut);flex-shrink:0}
+.conv-item .cprev{font-size:12px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.conv-item.waiting .cprev{color:var(--text);font-weight:600}
+.conv-item .cdot{width:9px;height:9px;border-radius:50%;background:var(--pink);box-shadow:0 0 8px var(--pink);flex-shrink:0}
+.conv-item .cdel{opacity:0;background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:0 2px;transition:opacity .15s}
+.conv-item:hover .cdel{opacity:1}
+.chat-main{display:flex;flex-direction:column;background:#07041a;min-height:0}
+.chat-header{padding:12px 16px;background:#0d0722;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.chat-header .conv-avatar{width:40px;height:40px}
+.chat-header-actions{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.chat-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:4px;min-height:0}
 .chat-no-sel{flex:1;display:grid;place-items:center;color:var(--mut);font-size:15px;text-align:center;padding:20px}
-.msg-bubble{max-width:72%;padding:9px 13px;border-radius:14px;font-size:14px;line-height:1.45;word-break:break-word}
-.msg-bubble.customer{background:#1a0f3d;border:1px solid var(--line);border-bottom-left-radius:4px;align-self:flex-start}
-.msg-bubble.admin{background:linear-gradient(135deg,#8b5cff,#ff3d9a);border-bottom-right-radius:4px;align-self:flex-end}
+.msg-row{display:flex;flex-direction:column;max-width:72%;margin-top:6px}
+.msg-row.admin{align-self:flex-end;align-items:flex-end}
+.msg-row.customer{align-self:flex-start;align-items:flex-start}
+.msg-row.same{margin-top:0}
+.msg-row.same .msg-meta{display:none}
+.msg-bubble{padding:9px 13px;border-radius:14px;font-size:14px;line-height:1.45;word-break:break-word;white-space:pre-wrap}
+.msg-bubble.customer{background:#1a0f3d;border:1px solid var(--line);border-bottom-left-radius:4px}
+.msg-bubble.admin{background:linear-gradient(135deg,#8b5cff,#ff3d9a);border-bottom-right-radius:4px}
+.msg-row.pending .msg-bubble{opacity:.6}
+.msg-row.failed .msg-bubble{border:1px solid var(--red);opacity:.8}
 .msg-meta{font-size:11px;color:var(--mut);margin-bottom:3px}
-.msg-meta.right{text-align:right}
-.chat-footer{padding:12px 14px;border-top:1px solid var(--line);display:flex;gap:8px}
-.chat-footer textarea{min-height:44px;resize:none;border-radius:10px;font-size:14px}
-@media(max-width:700px){.chat-layout{grid-template-columns:1fr;height:auto}.chat-list{max-height:200px}}
+.msg-tick{font-size:10px;color:var(--mut);margin-top:2px}
+.chat-day{align-self:center;font-size:11px;color:var(--mut);background:#140c34;border:1px solid var(--line);border-radius:99px;padding:2px 10px;margin:10px 0 4px}
+.chat-banner{margin:0 14px 10px;padding:8px 12px;border-radius:10px;background:#ff445518;border:1px solid #ff445555;color:#ffb3bb;font-size:13px;display:none}
+.chat-footer{padding:12px 14px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:flex-end}
+.chat-footer textarea{min-height:44px;max-height:120px;resize:none;border-radius:10px;font-size:14px}
+.chat-quick{display:flex;gap:6px;flex-wrap:wrap;padding:8px 14px 0}
+.chat-quick button{background:#140c34;border:1px solid var(--line);color:var(--mut);border-radius:99px;padding:4px 10px;font:500 12px Outfit,sans-serif;cursor:pointer}
+.chat-quick button:hover{color:var(--text);border-color:var(--pink)}
+.chat-back{display:none}
+@media(max-width:760px){
+  .chat-layout{grid-template-columns:1fr;height:75vh}
+  .chat-layout.has-active .chat-list{display:none}
+  .chat-layout:not(.has-active) .chat-main{display:none}
+  .chat-back{display:inline-flex}
+}
 
 /* admin accounts */
 .admin-row{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--card);border:1px solid var(--line);border-radius:10px;flex-wrap:wrap}
@@ -315,33 +350,53 @@ form.grid{display:grid;gap:12px}
   <!-- LIVE CHAT -->
   <div class="tab-pane" id="tab-chat" style="display:none">
     <div class="card" style="padding:0;overflow:hidden">
-      <div class="chat-layout">
+      <div class="chat-layout" id="chatLayout">
         <div class="chat-list" id="convList">
-          <div style="padding:12px 14px;border-bottom:1px solid var(--line);font-weight:700;color:var(--yel);font-size:13px">
-            💬 CONVERSATIONS
-            <button class="btn alt sm" style="float:right;padding:3px 8px;font-size:11px" onclick="loadConversations()">↻</button>
+          <div class="chat-list-head">
+            <b>💬 CONVERSATIONS</b>
+            <button class="btn alt sm" style="padding:3px 8px;font-size:11px" title="Delete all closed chats" onclick="deleteClosedChats()">🧹 Clear closed</button>
+            <button class="btn alt sm" style="padding:3px 8px;font-size:11px" title="Refresh" onclick="loadConversations()">↻</button>
           </div>
-          <div id="convItems" style="flex:1;overflow-y:auto"><div style="padding:16px;color:var(--mut);font-size:13px">Loading chats...</div></div>
+          <div class="chat-filters" id="chatFilters">
+            <button class="on" data-f="all">All</button>
+            <button data-f="waiting">Waiting</button>
+            <button data-f="open">Open</button>
+            <button data-f="closed">Closed</button>
+          </div>
+          <div id="convItems"><div style="padding:16px;color:var(--mut);font-size:13px">Loading chats...</div></div>
         </div>
         <div class="chat-main" id="chatMain">
           <div class="chat-no-sel" id="chatNoSel">
             <div>
               <div style="font-size:36px;margin-bottom:10px">💬</div>
               <div>Select a conversation to reply</div>
+              <div style="font-size:12px;margin-top:6px">Pink dot = customer is waiting for a reply</div>
             </div>
           </div>
-          <div id="chatActive" style="display:none;flex-direction:column;height:100%">
+          <div id="chatActive" style="display:none;flex-direction:column;height:100%;min-height:0">
             <div class="chat-header">
-              <div>
+              <button class="btn alt sm chat-back" onclick="closeActiveView()">←</button>
+              <div class="conv-avatar" id="chatAvatar">C</div>
+              <div style="min-width:0">
                 <div style="font-weight:700" id="chatCName">Customer</div>
                 <div style="font-size:12px;color:var(--mut)" id="chatCStatus">open</div>
               </div>
-              <button class="btn alt sm" id="btnCloseChat" onclick="closeConversation()">✕ Close Chat</button>
+              <div class="chat-header-actions">
+                <button class="btn alt sm" id="btnCloseChat" onclick="closeConversation()">✕ Close</button>
+                <button class="btn danger sm" onclick="deleteConversation(activeConvId)">🗑 Delete</button>
+              </div>
             </div>
             <div class="chat-msgs" id="chatMsgs"></div>
+            <div class="chat-banner" id="chatBanner">This chat is closed — the customer left or it was closed by an admin. They won't see new replies.</div>
+            <div class="chat-quick" id="chatQuick">
+              <button>Hi! How can we help? 😊</button>
+              <button>Yes, we have it available.</button>
+              <button>Please come to the shop, we'll sort you out.</button>
+              <button>Call/WhatsApp us on +254 742 454 100</button>
+            </div>
             <div class="chat-footer">
-              <textarea id="replyText" placeholder="Type your reply..." rows="2"></textarea>
-              <button class="btn cyan" id="btnReply" onclick="sendReply()" style="align-self:flex-end;white-space:nowrap">Send ▶</button>
+              <textarea id="replyText" placeholder="Type your reply... (Enter to send, Shift+Enter for new line)" rows="1"></textarea>
+              <button class="btn cyan" id="btnReply" onclick="sendReply()" style="white-space:nowrap">Send ▶</button>
             </div>
           </div>
         </div>
@@ -471,6 +526,8 @@ function logout() {
   TOKEN = null; ME = null;
   localStorage.removeItem("astro_admin_token");
   localStorage.removeItem("astro_admin_user");
+  if (typeof closeActiveView === "function" && activeConvId) closeActiveView();
+  CONVS = []; lastWaitingCount = 0;
   checkAuth();
 }
 $("#btnLogout").addEventListener("click", logout);
@@ -486,7 +543,7 @@ $$(".tab-btn").forEach(btn => btn.addEventListener("click", () => {
   if (btn.dataset.tab === "tab-requests") loadRequests();
   if (btn.dataset.tab === "tab-reviews") loadReviews();
   if (btn.dataset.tab === "tab-catalog") loadCatalog();
-  if (btn.dataset.tab === "tab-chat") { loadConversations(); startChatPoll(); }
+  if (btn.dataset.tab === "tab-chat") { loadConversations(); if (activeConvId) pollChatMessages(); }
   if (btn.dataset.tab === "tab-team") loadAdmins();
 }));
 
@@ -505,7 +562,6 @@ async function loadStats() {
   setBadge("bBadge", s.bookingsPending);
   setBadge("rBadge", s.requestsNew);
   setBadge("rvBadge", s.reviewsPending);
-  setBadge("chatBadge", s.chatOpen);
 }
 
 function setBadge(id, count) {
@@ -681,79 +737,236 @@ $("#customTgF").addEventListener("submit", async e => {
 
 // ── LIVE CHAT ─────────────────────────────────────────────────────────────
 let CONVS = [];
+let chatFilter = "all";
+let seenMsgIds = new Set();
+let lastMsgSender = null, lastMsgDay = null;
+let msgPollBusy = false, convLoadBusy = false;
+let lastWaitingCount = 0;
+const esc = s => String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+const initial = n => esc((String(n || "?").trim()[0] || "?").toUpperCase());
+function shortTime(iso) {
+  const d = new Date(iso), now = new Date();
+  return d.toDateString() === now.toDateString()
+    ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : d.toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
+$$("#chatFilters button").forEach(b => b.addEventListener("click", () => {
+  $$("#chatFilters button").forEach(x => x.classList.remove("on"));
+  b.classList.add("on"); chatFilter = b.dataset.f; renderConversations();
+}));
+$$("#chatQuick button").forEach(b => b.addEventListener("click", () => {
+  $("#replyText").value = b.textContent; $("#replyText").focus();
+}));
+
 async function loadConversations() {
-  const r = await api("/chat/conversations");
-  if (!r?.ok) return;
-  CONVS = r.data;
+  if (convLoadBusy) return;
+  convLoadBusy = true;
+  try {
+    const r = await api("/chat/conversations");
+    if (!r?.ok) return;
+    CONVS = r.data;
+    const waiting = CONVS.filter(c => c.needs_reply).length;
+    setBadge("chatBadge", waiting);
+    if (waiting > lastWaitingCount) notifyNewChat();
+    lastWaitingCount = waiting;
+    renderConversations();
+    // Keep header in sync with the active conversation
+    const act = CONVS.find(c => c.id === activeConvId);
+    if (activeConvId && !act) closeActiveView();
+  } finally { convLoadBusy = false; }
+}
+
+function renderConversations() {
   const box = $("#convItems");
+  const list = CONVS.filter(c =>
+    chatFilter === "all" ? true :
+    chatFilter === "waiting" ? c.needs_reply :
+    c.status === chatFilter);
   box.replaceChildren();
-  if (!CONVS.length) { box.innerHTML = '<div style="padding:16px;color:var(--mut);font-size:13px">No chats yet.</div>'; return; }
-  CONVS.forEach(c => {
+  if (!list.length) {
+    box.innerHTML = `<div style="padding:16px;color:var(--mut);font-size:13px">${CONVS.length ? "Nothing here." : "No chats yet. When a customer uses the chat on the website, it shows up here."}</div>`;
+    return;
+  }
+  list.forEach(c => {
     const el = document.createElement("div");
-    el.className = "conv-item" + (c.id === activeConvId ? " active" : "");
-    el.dataset.cid = c.id;
-    el.innerHTML = `<div class="cname">${c.customer_name}
-      ${c.status==="open"?'<span class="cbadge">●</span>':''}</div>
-      <div class="ctime">${new Date(c.updated_at||c.created_at).toLocaleString()} · <span class="tag ${c.status}">${c.status}</span></div>`;
+    el.className = "conv-item" + (c.id === activeConvId ? " active" : "") + (c.status === "closed" ? " closed" : "") + (c.needs_reply ? " waiting" : "");
+    const prev = c.last_text ? (c.last_sender === "admin" ? "You: " : "") + c.last_text : "No messages yet";
+    el.innerHTML = `
+      <div class="conv-avatar">${initial(c.customer_name)}</div>
+      <div class="conv-body">
+        <div class="conv-top">
+          <span class="cname">${esc(c.customer_name)}</span>
+          ${c.needs_reply ? '<span class="cdot" title="Waiting for reply"></span>' : ""}
+          <span class="ctime">${shortTime(c.updated_at || c.created_at)}</span>
+        </div>
+        <div class="cprev">${esc(prev)}</div>
+        <div style="margin-top:4px"><span class="tag ${c.status === "open" ? "confirmed" : "cancelled"}" style="font-size:10px;padding:1px 7px">${c.status}</span></div>
+      </div>
+      <button class="cdel" title="Delete chat">🗑</button>`;
     el.addEventListener("click", () => openConversation(c));
+    el.querySelector(".cdel").addEventListener("click", e => { e.stopPropagation(); deleteConversation(c.id); });
     box.appendChild(el);
   });
 }
 
 function openConversation(conv) {
-  activeConvId = conv.id;
-  chatLastSince = new Date(0).toISOString();
+  if (activeConvId !== conv.id) {
+    activeConvId = conv.id;
+    chatLastSince = new Date(0).toISOString();
+    seenMsgIds = new Set(); lastMsgSender = null; lastMsgDay = null;
+    $("#chatMsgs").replaceChildren();
+  }
+  $("#chatLayout").classList.add("has-active");
   $("#chatNoSel").style.display = "none";
   $("#chatActive").style.display = "flex";
   $("#chatCName").textContent = conv.customer_name;
-  $("#chatCStatus").textContent = conv.status;
-  $("#chatMsgs").replaceChildren();
-  loadConversations();
+  $("#chatAvatar").textContent = (String(conv.customer_name || "?").trim()[0] || "?").toUpperCase();
+  setChatStatus(conv.status);
+  renderConversations();
   pollChatMessages();
+  $("#replyText").focus();
+}
+
+function closeActiveView() {
+  activeConvId = null;
+  $("#chatLayout").classList.remove("has-active");
+  $("#chatNoSel").style.display = "grid";
+  $("#chatActive").style.display = "none";
+  renderConversations();
+}
+
+function setChatStatus(status) {
+  const closed = status !== "open";
+  $("#chatCStatus").textContent = closed ? "🔴 Closed" : "🟢 Open — customer is on the site";
+  $("#chatBanner").style.display = closed ? "block" : "none";
+  $("#btnCloseChat").style.display = closed ? "none" : "inline-flex";
 }
 
 async function pollChatMessages() {
-  if (!activeConvId) return;
-  const r = await api(`/chat/messages?conversation_id=${activeConvId}&since=${encodeURIComponent(chatLastSince)}`);
-  if (r?.ok && r.messages.length) {
-    r.messages.forEach(m => appendMsg(m));
-    chatLastSince = r.messages[r.messages.length - 1].created_at;
-    const box = $("#chatMsgs");
-    box.scrollTop = box.scrollHeight;
-  }
+  if (!activeConvId || msgPollBusy) return;
+  msgPollBusy = true;
+  const convId = activeConvId;
+  try {
+    const r = await api(`/chat/messages?conversation_id=${convId}&since=${encodeURIComponent(chatLastSince)}`);
+    if (convId !== activeConvId || !r?.ok) return;
+    if (r.messages.length) {
+      const box = $("#chatMsgs");
+      const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
+      r.messages.forEach(m => appendMsg(m));
+      chatLastSince = r.messages[r.messages.length - 1].created_at;
+      if (nearBottom) box.scrollTop = box.scrollHeight;
+    }
+    if (r.status) setChatStatus(r.status);
+  } finally { msgPollBusy = false; }
 }
 
-function appendMsg(m) {
+function appendMsg(m, opts = {}) {
+  if (m.id && seenMsgIds.has(m.id)) return null;
+  if (m.id) seenMsgIds.add(m.id);
   const box = $("#chatMsgs");
-  const wrap = document.createElement("div");
+  const day = new Date(m.created_at).toDateString();
+  if (day !== lastMsgDay) {
+    const d = document.createElement("div");
+    d.className = "chat-day";
+    d.textContent = day === new Date().toDateString() ? "Today" : new Date(m.created_at).toLocaleDateString();
+    box.appendChild(d);
+    lastMsgDay = day; lastMsgSender = null;
+  }
   const isAdmin = m.sender === "admin";
-  wrap.innerHTML = `<div class="msg-meta ${isAdmin?"right":""}">${m.sender_name} · ${new Date(m.created_at).toLocaleTimeString()}</div>
-    <div class="msg-bubble ${m.sender}">${m.text.replace(/</g,"&lt;").replace(/\n/g,"<br>")}</div>`;
-  box.appendChild(wrap);
+  const row = document.createElement("div");
+  row.className = `msg-row ${isAdmin ? "admin" : "customer"}` + (lastMsgSender === m.sender + m.sender_name ? " same" : "") + (opts.pending ? " pending" : "");
+  row.innerHTML = `<div class="msg-meta">${esc(m.sender_name)} · ${new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
+    <div class="msg-bubble ${isAdmin ? "admin" : "customer"}">${esc(m.text)}</div>
+    ${opts.pending ? '<div class="msg-tick">Sending…</div>' : ""}`;
+  box.appendChild(row);
+  lastMsgSender = m.sender + m.sender_name;
+  return row;
 }
 
 async function sendReply() {
   const text = ($("#replyText").value || "").trim();
   if (!text || !activeConvId) return;
   $("#replyText").value = "";
-  const r = await api("/chat/reply","POST",{conversation_id:activeConvId,text});
-  if(r?.ok) pollChatMessages();
-  else toast("Failed to send reply",true);
+  // Show it instantly, confirm when the server answers
+  const tmp = appendMsg({ sender: "admin", sender_name: ME?.display_name || "You", text, created_at: new Date().toISOString() }, { pending: true });
+  const box = $("#chatMsgs"); box.scrollTop = box.scrollHeight;
+  const r = await api("/chat/reply", "POST", { conversation_id: activeConvId, text });
+  if (r?.ok && r.message) {
+    seenMsgIds.add(r.message.id);
+    if (r.message.created_at > chatLastSince) chatLastSince = r.message.created_at;
+    tmp.classList.remove("pending");
+    tmp.querySelector(".msg-tick")?.remove();
+    loadConversations();
+  } else {
+    tmp.classList.replace("pending", "failed");
+    const t = tmp.querySelector(".msg-tick"); if (t) t.textContent = "⚠ Not sent";
+    toast("Failed to send reply", true);
+  }
 }
-$("#replyText").addEventListener("keydown", e => { if(e.key==="Enter" && !e.shiftKey){e.preventDefault();sendReply();} });
+$("#replyText").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendReply(); } });
 
 async function closeConversation() {
   if (!activeConvId) return;
-  if (!confirm("Close this chat conversation?")) return;
-  await api("/chat/close","POST",{conversation_id:activeConvId});
+  if (!confirm("Close this chat? The customer will be told the chat has ended.")) return;
+  await api("/chat/close", "POST", { conversation_id: activeConvId });
   toast("Conversation closed");
-  activeConvId = null;
-  $("#chatNoSel").style.display = "grid";
-  $("#chatActive").style.display = "none";
+  setChatStatus("closed");
   loadConversations();
 }
 
-function startChatPoll() { clearInterval(chatPollTimer); chatPollTimer = setInterval(pollChatMessages, 3000); }
+async function deleteConversation(id) {
+  if (!id) return;
+  const c = CONVS.find(x => x.id === id);
+  if (!confirm(`Delete the chat with ${c?.customer_name || "this customer"} permanently? All messages will be removed.`)) return;
+  const r = await api("/chat/delete", "POST", { conversation_id: id });
+  if (r?.ok) {
+    toast("Chat deleted");
+    if (id === activeConvId) closeActiveView();
+    loadConversations(); loadStats();
+  } else toast(r?.error || "Failed", true);
+}
+
+async function deleteClosedChats() {
+  const n = CONVS.filter(c => c.status === "closed").length;
+  if (!n) { toast("No closed chats to clear"); return; }
+  if (!confirm(`Delete all ${n} closed chat(s) permanently?`)) return;
+  const r = await api("/chat/delete", "POST", { all_closed: true });
+  if (r?.ok) {
+    toast(`Deleted ${r.deleted} chat(s)`);
+    if (activeConvId && !CONVS.find(c => c.id === activeConvId && c.status === "open")) closeActiveView();
+    loadConversations(); loadStats();
+  } else toast(r?.error || "Failed", true);
+}
+
+// Little "ding" + title flash when a new customer is waiting
+function notifyNewChat() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.value = 880; g.gain.value = 0.08;
+    o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime + 0.15);
+  } catch {}
+  if (document.hidden) {
+    const orig = "Astro World Admin Portal";
+    document.title = "💬 New chat message!";
+    const back = () => { document.title = orig; document.removeEventListener("visibilitychange", back); };
+    document.addEventListener("visibilitychange", back);
+  }
+}
+
+function chatTabOpen() { return $("#tab-chat")?.style.display !== "none"; }
+function startChatPoll() {
+  clearInterval(chatPollTimer);
+  let tick = 0;
+  chatPollTimer = setInterval(() => {
+    if (document.hidden) return;          // pause when the tab is in the background
+    if (!chatTabOpen()) return;
+    tick++;
+    if (activeConvId) pollChatMessages(); // new messages every 2s
+    if (tick % 3 === 0) loadConversations(); // list every 6s
+  }, 2000);
+}
 function stopChatPoll() { clearInterval(chatPollTimer); }
 
 // ── TEAM (ADMIN MANAGEMENT) ───────────────────────────────────────────────
@@ -849,11 +1062,13 @@ async function del(table, id, reload) {
 // ── POLLING ───────────────────────────────────────────────────────────────
 function startPolling() {
   clearInterval(convPollTimer);
+  loadConversations();
+  startChatPoll();
   convPollTimer = setInterval(() => {
+    if (document.hidden) return;
     loadStats();
-    if (activeConvId) pollChatMessages();
-    else if (document.getElementById("tab-chat")?.style.display !== "none") loadConversations();
-  }, 8000);
+    if (!chatTabOpen()) loadConversations(); // keeps the "waiting" badge + ding working on other tabs
+  }, 10000);
 }
 function stopPolling() { clearInterval(convPollTimer); clearInterval(chatPollTimer); }
 

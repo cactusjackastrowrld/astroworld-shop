@@ -460,173 +460,241 @@ setTimeout(() => { $("#ld").classList.add("out"); }, matchMedia("(prefers-reduce
 
 <!-- ===== CUSTOMER LIVE CHAT WIDGET ===== -->
 <style>
-#cw-btn{position:fixed;bottom:24px;left:24px;z-index:900;background:linear-gradient(135deg,var(--pink),var(--pur));color:#fff;border:none;border-radius:50px;padding:13px 20px;font-family:Outfit,sans-serif;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 24px #ff3d9a66;display:flex;align-items:center;gap:8px;transition:transform .2s,box-shadow .2s}
+#cw-btn{position:fixed;bottom:calc(16px + env(safe-area-inset-bottom,0px));left:max(16px,env(safe-area-inset-left,0px));z-index:900;background:linear-gradient(135deg,var(--pink),var(--pur));color:#fff;border:none;border-radius:50px;padding:13px 20px;font:700 14px Outfit,sans-serif;cursor:pointer;box-shadow:0 4px 24px #ff3d9a66;display:flex;align-items:center;gap:8px;transition:transform .2s,box-shadow .2s}
 #cw-btn:hover{transform:translateY(-2px);box-shadow:0 6px 32px #ff3d9a99}
 #cw-btn .cw-dot{width:9px;height:9px;border-radius:50%;background:var(--grn);box-shadow:0 0 6px var(--grn);animation:cwPulse 2s infinite}
+#cw-unread{display:none;background:var(--yel);color:#111;border-radius:99px;font-size:11px;font-weight:800;padding:1px 7px;margin-left:2px}
 @keyframes cwPulse{0%,100%{opacity:1}50%{opacity:.4}}
-#cw-box{position:fixed;bottom:80px;left:24px;z-index:901;width:320px;max-height:480px;background:#0d0722;border:1px solid var(--line,#3b2a7a);border-radius:16px;box-shadow:0 8px 40px #000a;display:none;flex-direction:column;overflow:hidden;font-family:Outfit,sans-serif}
-#cw-box.open{display:flex}
-#cw-head{background:linear-gradient(135deg,#1a0a3a,#0d0722);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line,#3b2a7a)}
-#cw-head .cw-title{font-family:Bungee,sans-serif;font-size:14px;color:var(--pink,#ff3d9a);letter-spacing:.05em}
-#cw-head .cw-sub{font-size:11px;color:#a495e4;margin-top:2px}
-#cw-close{background:none;border:none;color:#a495e4;cursor:pointer;font-size:20px;line-height:1;padding:0}
-#cw-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;min-height:160px;max-height:280px}
-#cw-msgs::-webkit-scrollbar{width:4px}
-#cw-msgs::-webkit-scrollbar-thumb{background:#3b2a7a;border-radius:4px}
-.cw-msg{padding:8px 12px;border-radius:12px;font-size:13px;max-width:85%;line-height:1.4;word-break:break-word}
-.cw-msg.me{background:linear-gradient(135deg,#8b5cff33,#ff3d9a22);border:1px solid #8b5cff44;align-self:flex-end;text-align:right}
-.cw-msg.admin{background:#1a0f3d;border:1px solid #3b2a7a;align-self:flex-start}
-.cw-msg .cw-who{font-size:10px;color:#a495e4;margin-bottom:3px;font-weight:600}
-.cw-name-step{padding:16px;display:flex;flex-direction:column;gap:10px}
-.cw-name-step p{margin:0;font-size:13px;color:#a495e4}
-#cw-name-inp{background:#07041a;border:1px solid #3b2a7a;border-radius:8px;padding:9px 12px;color:#f4f0ff;font-family:Outfit,sans-serif;font-size:14px;width:100%;box-sizing:border-box}
-#cw-name-inp:focus{outline:none;border-color:var(--pink,#ff3d9a)}
-#cw-start-btn{background:linear-gradient(90deg,var(--pink,#ff3d9a),var(--pur,#8b5cff));color:#fff;border:none;border-radius:8px;padding:10px;font-family:Outfit,sans-serif;font-size:14px;font-weight:700;cursor:pointer;width:100%}
-#cw-footer{padding:10px 12px;border-top:1px solid #3b2a7a;display:flex;gap:8px}
-#cw-inp{flex:1;background:#07041a;border:1px solid #3b2a7a;border-radius:8px;padding:9px 12px;color:#f4f0ff;font-family:Outfit,sans-serif;font-size:13px;resize:none;min-height:38px;max-height:80px}
-#cw-inp:focus{outline:none;border-color:var(--pink,#ff3d9a)}
-#cw-send{background:linear-gradient(90deg,var(--pink,#ff3d9a),var(--pur,#8b5cff));color:#fff;border:none;border-radius:8px;padding:0 14px;cursor:pointer;font-size:18px;flex-shrink:0}
-#cw-send:disabled{opacity:.4;cursor:default}
+#cw-box{position:fixed;bottom:calc(78px + env(safe-area-inset-bottom,0px));left:max(16px,env(safe-area-inset-left,0px));z-index:901;width:340px;max-width:calc(100vw - 32px);height:min(500px,calc(100vh - 120px));background:#0d0722;border:1px solid var(--line);border-radius:18px;box-shadow:0 10px 50px #000c,0 0 30px #8b5cff33;display:none;flex-direction:column;overflow:hidden;font-family:Outfit,sans-serif;transform-origin:bottom left}
+#cw-box.open{display:flex;animation:cwIn .22s ease-out}
+@keyframes cwIn{from{opacity:0;transform:translateY(12px) scale(.96)}to{opacity:1;transform:none}}
+#cw-head{background:linear-gradient(135deg,#2a0f55,#0d0722);padding:14px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line)}
+#cw-head .cw-av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--pink),var(--pur));font-size:18px;flex-shrink:0}
+#cw-head .cw-title{font-family:Bungee,sans-serif;font-size:13px;color:var(--yel);letter-spacing:.05em}
+#cw-head .cw-sub{font-size:11px;color:var(--grn);margin-top:2px}
+#cw-close{margin-left:auto;background:none;border:none;color:var(--mut);cursor:pointer;font-size:22px;line-height:1;padding:0 4px}
+.cw-name-step{padding:22px 18px;display:flex;flex-direction:column;gap:12px;flex:1}
+.cw-name-step p{margin:0;font-size:14px;color:var(--mut)}
+.cw-name-step input{background:#07041a;border:1px solid var(--line);border-radius:10px;padding:11px 13px;color:var(--text);font:400 15px Outfit,sans-serif;width:100%}
+.cw-name-step input:focus,#cw-inp:focus{outline:none;border-color:var(--pink);box-shadow:0 0 0 3px #ff3d9a22}
+.cw-primary{background:linear-gradient(90deg,var(--pink),var(--pur));color:#fff;border:none;border-radius:10px;padding:11px;font:700 14px Outfit,sans-serif;cursor:pointer;width:100%}
+.cw-primary:disabled{opacity:.5;cursor:default}
+#cw-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:4px;min-height:0}
+#cw-msgs::-webkit-scrollbar{width:4px}#cw-msgs::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+.cw-row{display:flex;flex-direction:column;max-width:82%;margin-top:6px}
+.cw-row.me{align-self:flex-end;align-items:flex-end}
+.cw-row.admin{align-self:flex-start;align-items:flex-start}
+.cw-row.same{margin-top:0}.cw-row.same .cw-who{display:none}
+.cw-who{font-size:10px;color:var(--mut);margin:0 4px 3px;font-weight:600}
+.cw-bub{padding:8px 12px;border-radius:14px;font-size:14px;line-height:1.4;word-break:break-word;white-space:pre-wrap}
+.cw-row.me .cw-bub{background:linear-gradient(135deg,var(--pur),var(--pink));color:#fff;border-bottom-right-radius:4px}
+.cw-row.admin .cw-bub{background:#1a0f3d;border:1px solid var(--line);border-bottom-left-radius:4px}
+.cw-tick{font-size:10px;color:var(--mut);margin:2px 4px 0}
+.cw-row.failed .cw-bub{opacity:.6;border:1px solid #ff4455}
+.cw-sys{align-self:center;font-size:12px;color:var(--mut);text-align:center;margin:10px 0;padding:6px 12px;background:#140c34;border-radius:99px}
+#cw-footer{padding:10px 12px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:flex-end}
+#cw-inp{flex:1;background:#07041a;border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--text);font:400 14px Outfit,sans-serif;resize:none;height:42px;max-height:100px}
+#cw-send{background:linear-gradient(90deg,var(--pink),var(--pur));color:#fff;border:none;border-radius:10px;width:44px;height:42px;cursor:pointer;font-size:17px;flex-shrink:0}
+#cw-ended{padding:12px;border-top:1px solid var(--line);display:none}
+@media(max-width:520px){#cw-btn .cw-label{display:none}#cw-btn{padding:14px 16px}}
 </style>
 
-<!-- Chat toggle button -->
-<button id="cw-btn" onclick="cwToggle()">
-  <span class="cw-dot"></span> 💬 Chat with us
+<button id="cw-btn" type="button" aria-label="Chat with us">
+  <span class="cw-dot"></span> 💬 <span class="cw-label">Chat with us</span><span id="cw-unread">0</span>
 </button>
 
-<!-- Chat window -->
-<div id="cw-box">
+<div id="cw-box" role="dialog" aria-label="Astro World live chat">
   <div id="cw-head">
+    <div class="cw-av">🪐</div>
     <div>
-      <div class="cw-title">🌌 ASTRO WORLD CHAT</div>
-      <div class="cw-sub">We reply within minutes</div>
+      <div class="cw-title">ASTRO WORLD</div>
+      <div class="cw-sub">● Online · we usually reply in minutes</div>
     </div>
-    <button id="cw-close" onclick="cwToggle()">✕</button>
+    <button id="cw-close" type="button" aria-label="Minimise chat">✕</button>
   </div>
 
-  <!-- Step 1: enter name -->
-  <div class="cw-name-step" id="cw-step1">
-    <p>👋 Hey! What's your name so we can help you?</p>
-    <input id="cw-name-inp" placeholder="Your name…" maxlength="40" autocomplete="off">
-    <button id="cw-start-btn" onclick="cwStart()">Start Chat →</button>
-  </div>
+  <form class="cw-name-step" id="cw-step1">
+    <p>👋 Hi there! Tell us your name and ask us anything — prices, services, movies…</p>
+    <input id="cw-name-inp" placeholder="Your name" maxlength="40" autocomplete="off" required>
+    <button class="cw-primary" id="cw-start-btn" type="submit">Start chat →</button>
+  </form>
 
-  <!-- Step 2: chat -->
-  <div id="cw-step2" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+  <div id="cw-step2" style="display:none;flex-direction:column;flex:1;min-height:0">
     <div id="cw-msgs"></div>
     <div id="cw-footer">
-      <textarea id="cw-inp" rows="1" placeholder="Type a message…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();cwSend()}"></textarea>
-      <button id="cw-send" onclick="cwSend()">➤</button>
+      <textarea id="cw-inp" rows="1" maxlength="1000" placeholder="Type a message…"></textarea>
+      <button id="cw-send" type="button" aria-label="Send">➤</button>
     </div>
+    <div id="cw-ended"><button class="cw-primary" id="cw-restart" type="button">Start a new chat</button></div>
   </div>
 </div>
 
 <script>
-(function(){
+(function () {
   const API = "https://iqdzokybhggiilzscnxv.supabase.co/functions/v1/shop-admin";
-  let cwSessId = localStorage.getItem("cw_session") || null;
-  let cwName   = localStorage.getItem("cw_name")    || null;
-  let cwPollTimer = null;
-  let cwLastTs = 0;
-  let cwOpen = false;
+  const el = id => document.getElementById(id);
+  // Old versions saved the name forever — clean that up
+  try { localStorage.removeItem("cw_session"); localStorage.removeItem("cw_name"); } catch (e) {}
 
-  // Auto-restore session
-  if (cwSessId && cwName) { setTimeout(cwRestore, 400); }
+  // Everything lives in memory only: refreshing the page = new chat, name asked again
+  let sess = null, name = null, since = new Date(0).toISOString();
+  let seen = new Set(), lastWho = null, open = false, ended = false;
+  let busy = false, unread = 0, timer = null;
 
-  window.cwToggle = function(){
-    cwOpen = !cwOpen;
-    document.getElementById("cw-box").classList.toggle("open", cwOpen);
-    if (cwOpen && cwSessId) cwScrollBottom();
-  };
+  const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const scrollDown = () => { const m = el("cw-msgs"); m.scrollTop = m.scrollHeight; };
 
-  window.cwStart = async function(){
-    const n = document.getElementById("cw-name-inp").value.trim();
+  function toggle(force) {
+    open = typeof force === "boolean" ? force : !open;
+    el("cw-box").classList.toggle("open", open);
+    if (open) {
+      unread = 0; badge();
+      setTimeout(() => (sess ? el("cw-inp") : el("cw-name-inp")).focus(), 50);
+      scrollDown();
+    }
+    schedule();
+  }
+  el("cw-btn").onclick = () => toggle();
+  el("cw-close").onclick = () => toggle(false);
+
+  function badge() {
+    const b = el("cw-unread");
+    b.textContent = unread; b.style.display = unread > 0 ? "inline" : "none";
+  }
+
+  function addMsg(m, mine, pending) {
+    if (m.id && seen.has(m.id)) return null;
+    if (m.id) seen.add(m.id);
+    const who = mine ? "me" : "admin";
+    const row = document.createElement("div");
+    row.className = "cw-row " + who + (lastWho === who + (m.sender_name || "") ? " same" : "");
+    row.innerHTML = '<div class="cw-who">' + (mine ? "You" : "✦ " + esc(m.sender_name || "Astro World")) + "</div>" +
+      '<div class="cw-bub">' + esc(m.text) + "</div>" + (pending ? '<div class="cw-tick">Sending…</div>' : "");
+    el("cw-msgs").appendChild(row);
+    lastWho = who + (m.sender_name || "");
+    scrollDown();
+    return row;
+  }
+  function sysMsg(t) {
+    const d = document.createElement("div");
+    d.className = "cw-sys"; d.textContent = t;
+    el("cw-msgs").appendChild(d); lastWho = null; scrollDown();
+  }
+
+  function showChatEnded() {
+    if (ended) return;
+    ended = true;
+    sysMsg("This chat has ended. Thanks for chatting with Astro World! 💜");
+    el("cw-footer").style.display = "none";
+    el("cw-ended").style.display = "block";
+    schedule();
+  }
+
+  function reset() {
+    sess = null; name = null; ended = false; since = new Date(0).toISOString();
+    seen = new Set(); lastWho = null;
+    el("cw-msgs").replaceChildren();
+    el("cw-footer").style.display = "flex";
+    el("cw-ended").style.display = "none";
+    el("cw-step2").style.display = "none";
+    el("cw-step1").style.display = "flex";
+    el("cw-name-inp").value = "";
+    el("cw-name-inp").focus();
+    schedule();
+  }
+  el("cw-restart").onclick = reset;
+
+  el("cw-step1").onsubmit = async e => {
+    e.preventDefault();
+    const n = el("cw-name-inp").value.trim();
     if (!n) return;
-    cwName = n;
-    cwSessId = "cw-" + Date.now() + "-" + Math.random().toString(36).slice(2,8);
-    localStorage.setItem("cw_session", cwSessId);
-    localStorage.setItem("cw_name", cwName);
+    const btn = el("cw-start-btn");
+    btn.disabled = true; btn.textContent = "Connecting…";
     try {
-      await fetch(API + "/chat/open", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({session_id: cwSessId, name: cwName})
+      const r = await fetch(API + "/chat/open", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: n })
       });
-    } catch(e){}
-    cwShowChat();
-    cwAddMsg("admin", "Astro World", "Hi " + cwName + "! 👋 How can we help you today?", true);
-    cwStartPoll();
+      const d = await r.json();
+      if (!d.ok) throw new Error();
+      sess = d.session_id; name = n;
+      el("cw-step1").style.display = "none";
+      el("cw-step2").style.display = "flex";
+      addMsg({ sender_name: "Astro World", text: "Hi " + n + "! 👋 How can we help you today?" }, false);
+      el("cw-inp").focus();
+      schedule();
+    } catch (err) {
+      alert("Could not connect to chat. Please try again or WhatsApp us.");
+    } finally {
+      btn.disabled = false; btn.textContent = "Start chat →";
+    }
   };
 
-  function cwRestore(){
-    document.getElementById("cw-step1").style.display = "none";
-    document.getElementById("cw-step2").style.display = "flex";
-    cwStartPoll();
-  }
-
-  function cwShowChat(){
-    document.getElementById("cw-step1").style.display = "none";
-    document.getElementById("cw-step2").style.display = "flex";
-  }
-
-  window.cwSend = async function(){
-    const inp = document.getElementById("cw-inp");
+  async function send() {
+    const inp = el("cw-inp");
     const txt = inp.value.trim();
-    if (!txt || !cwSessId) return;
-    inp.value = "";
-    document.getElementById("cw-send").disabled = true;
-    cwAddMsg("me", cwName, txt, true);
+    if (!txt || !sess || ended) return;
+    inp.value = ""; inp.style.height = "42px";
+    const row = addMsg({ text: txt, sender_name: name }, true, true);
     try {
-      await fetch(API + "/chat/message", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({session_id: cwSessId, text: txt})
+      const r = await fetch(API + "/chat/message", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sess, text: txt })
       });
-    } catch(e){}
-    document.getElementById("cw-send").disabled = false;
-  };
-
-  function cwStartPoll(){
-    if (cwPollTimer) return;
-    cwPollTimer = setInterval(cwPoll, 4000);
-    cwPoll();
-  }
-
-  async function cwPoll(){
-    if (!cwSessId) return;
-    try {
-      const r = await fetch(API + "/chat/poll?session_id=" + encodeURIComponent(cwSessId) + "&since=" + cwLastTs);
-      if (!r.ok) return;
-      const data = await r.json();
-      if (data.messages && data.messages.length) {
-        for (const m of data.messages) {
-          if (m.sender !== "customer") {
-            cwAddMsg("admin", m.sender_name || "Astro World", m.text, false);
-          }
-          const ts = new Date(m.created_at).getTime();
-          if (ts > cwLastTs) cwLastTs = ts;
-        }
+      const d = await r.json();
+      if (d.closed) { row.remove(); showChatEnded(); return; }
+      if (!d.ok) throw new Error();
+      if (d.message) {
+        seen.add(d.message.id);
+        if (d.message.created_at > since) since = d.message.created_at;
       }
-    } catch(e){}
+      row.querySelector(".cw-tick").textContent = "✓ Sent";
+      setTimeout(() => row.querySelector(".cw-tick")?.remove(), 2500);
+      poll();
+    } catch (err) {
+      row.classList.add("failed");
+      row.querySelector(".cw-tick").textContent = "⚠ Not sent — check your internet";
+    }
+  }
+  el("cw-send").onclick = send;
+  el("cw-inp").addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+  });
+  el("cw-inp").addEventListener("input", e => {
+    e.target.style.height = "42px";
+    e.target.style.height = Math.min(e.target.scrollHeight, 100) + "px";
+  });
+
+  async function poll() {
+    if (!sess || busy || ended) return;
+    busy = true;
+    try {
+      const r = await fetch(API + "/chat/poll?session_id=" + encodeURIComponent(sess) + "&since=" + encodeURIComponent(since));
+      const d = await r.json();
+      for (const m of d.messages || []) {
+        if (m.created_at > since) since = m.created_at;
+        if (m.sender === "customer") { seen.add(m.id); continue; }
+        if (addMsg(m, false) && !open) { unread++; badge(); }
+      }
+      if (d.status === "closed" || d.status === "gone") showChatEnded();
+    } catch (e) { /* network blip — try again next tick */ }
+    finally { busy = false; }
   }
 
-  function cwAddMsg(type, who, text, scroll){
-    const container = document.getElementById("cw-msgs");
-    const div = document.createElement("div");
-    div.className = "cw-msg " + (type === "me" ? "me" : "admin");
-    div.innerHTML = '<div class="cw-who">' + (type === "me" ? "You" : "✦ " + who) + '</div>' + escHtml(text);
-    container.appendChild(div);
-    if (scroll) cwScrollBottom();
+  // Fast polling while the chat is open, slower when minimised, none when tab hidden
+  function schedule() {
+    clearTimeout(timer);
+    if (!sess || ended || document.hidden) return;
+    timer = setTimeout(async () => { await poll(); schedule(); }, open ? 2000 : 6000);
   }
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); schedule(); });
 
-  function cwScrollBottom(){
-    const m = document.getElementById("cw-msgs");
-    if (m) m.scrollTop = m.scrollHeight;
-  }
-
-  function escHtml(s){
-    return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-  }
+  // Leaving or refreshing the page ends the chat on the admin side
+  addEventListener("pagehide", () => {
+    if (sess && !ended && navigator.sendBeacon) {
+      navigator.sendBeacon(API + "/chat/end", JSON.stringify({ session_id: sess }));
+    }
+  });
 })();
 </script>
 <!-- ===== END CUSTOMER CHAT WIDGET ===== -->

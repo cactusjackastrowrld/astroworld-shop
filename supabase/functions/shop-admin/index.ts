@@ -72,6 +72,26 @@ async function tgPhoto(photo: string, caption: string) {
   });
 }
 
+// Run a task after the response is sent (so users don't wait for it)
+function background(p: Promise<unknown>) {
+  const safe = p.catch(() => {});
+  // deno-lint-ignore no-explicit-any
+  const rt = (globalThis as any).EdgeRuntime;
+  if (rt?.waitUntil) rt.waitUntil(safe);
+}
+
+// Escape text for Telegram HTML messages
+function escTg(s: string) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// Only accept real timestamps for "since" filters
+function safeIso(v: string | null) {
+  if (!v) return new Date(0).toISOString();
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? new Date(0).toISOString() : d.toISOString();
+}
+
 serve(async (req) => {
   const origin = req.headers.get("origin");
   if (req.method === "OPTIONS") return new Response("ok", { headers: getCorsHeaders(origin) });
@@ -89,49 +109,49 @@ serve(async (req) => {
 
   // ─── PUBLIC: Chat widget endpoints (no auth) ───────────────────────────────
 
-  // Customer starts or continues a chat session
+  // Customer starts a NEW chat session (every page load = fresh chat)
   if (path === "/chat/open" && req.method === "POST") {
-    const body = await req.json();
-    const name = (body.name || "Customer").trim().slice(0, 80);
-    const sessionId = body.session_id || crypto.randomUUID();
-
-    // Find or create conversation
-    let { data: conv } = await db.from("conversations").select("*").eq("session_id", sessionId).maybeSingle();
-    if (!conv) {
-      const { data: newConv } = await db.from("conversations")
-        .insert({ session_id: sessionId, customer_name: name, status: "open" })
-        .select().single();
-      conv = newConv;
-    }
-    return json({ ok: true, session_id: sessionId, conversation_id: conv.id });
+    const body = await req.json().catch(() => ({}));
+    const name = String(body.name || "Customer").trim().slice(0, 40) || "Customer";
+    const sessionId = crypto.randomUUID();
+    const { data: conv, error } = await db.from("conversations")
+      .insert({ session_id: sessionId, customer_name: name, status: "open" })
+      .select("id").single();
+    if (error || !conv) return json({ ok: false, error: "Could not start chat" }, 500);
+    return json({ ok: true, session_id: sessionId });
   }
 
   // Customer sends a message
   if (path === "/chat/message" && req.method === "POST") {
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
     const sessionId = body.session_id;
-    const text = (body.text || "").trim().slice(0, 1000);
+    const text = String(body.text || "").trim().slice(0, 1000);
     if (!sessionId || !text) return json({ ok: false, error: "Missing session_id or text" }, 400);
 
-    const { data: conv } = await db.from("conversations").select("id, customer_name").eq("session_id", sessionId).maybeSingle();
+    const { data: conv } = await db.from("conversations").select("id, customer_name, status").eq("session_id", sessionId).maybeSingle();
     if (!conv) return json({ ok: false, error: "Session not found" }, 404);
+    if (conv.status === "closed") return json({ ok: false, closed: true, error: "This chat was closed" }, 409);
 
-    await db.from("messages").insert({ conversation_id: conv.id, sender: "customer", sender_name: conv.customer_name, text });
-    await db.from("conversations").update({ updated_at: new Date().toISOString(), status: "open" }).eq("id", conv.id);
+    const now = new Date().toISOString();
+    const [{ data: msg }] = await Promise.all([
+      db.from("messages").insert({ conversation_id: conv.id, sender: "customer", sender_name: conv.customer_name, text })
+        .select("id, sender, sender_name, text, created_at").single(),
+      db.from("conversations").update({ updated_at: now }).eq("id", conv.id),
+    ]);
 
-    // Alert Telegram
-    await tgMessage(`💬 <b>New Chat Message</b>\n<b>${conv.customer_name}:</b> ${text}\n\n<i>Reply in Admin Dashboard → Live Chat</i>`);
-    return json({ ok: true });
+    // Telegram alert in the background — customer does not wait for it
+    background(tgMessage(`💬 <b>New Chat Message</b>\n<b>${escTg(conv.customer_name)}:</b> ${escTg(text)}\n\n<i>Reply in Admin Dashboard → Live Chat</i>`));
+    return json({ ok: true, message: msg });
   }
 
-  // Customer polls for new messages (since a given timestamp)
+  // Customer polls for new messages (since a given ISO timestamp)
   if (path === "/chat/poll" && req.method === "GET") {
     const sessionId = url.searchParams.get("session_id");
-    const since = url.searchParams.get("since") || new Date(0).toISOString();
     if (!sessionId) return json({ ok: false, error: "Missing session_id" }, 400);
+    const since = safeIso(url.searchParams.get("since"));
 
-    const { data: conv } = await db.from("conversations").select("id").eq("session_id", sessionId).maybeSingle();
-    if (!conv) return json({ ok: true, messages: [] });
+    const { data: conv } = await db.from("conversations").select("id, status").eq("session_id", sessionId).maybeSingle();
+    if (!conv) return json({ ok: true, messages: [], status: "gone" });
 
     const { data: msgs } = await db.from("messages")
       .select("id, sender, sender_name, text, created_at")
@@ -139,7 +159,17 @@ serve(async (req) => {
       .gt("created_at", since)
       .order("created_at", { ascending: true });
 
-    return json({ ok: true, messages: msgs || [] });
+    return json({ ok: true, messages: msgs || [], status: conv.status });
+  }
+
+  // Customer leaves the page / ends chat (sent with navigator.sendBeacon as text/plain)
+  if (path === "/chat/end" && req.method === "POST") {
+    let sessionId = "";
+    try { sessionId = JSON.parse(await req.text()).session_id || ""; } catch { /* ignore */ }
+    if (sessionId) {
+      await db.from("conversations").update({ status: "closed" }).eq("session_id", sessionId).eq("status", "open");
+    }
+    return json({ ok: true });
   }
 
   // ─── ALL OTHER ROUTES REQUIRE ADMIN LOGIN ─────────────────────────────────
@@ -176,7 +206,7 @@ serve(async (req) => {
 
   // Check if account is blocked or token was issued before invalidation
   const { data: selfAdmin } = await db.from("admins")
-    .select("id, blocked, session_invalidated_at")
+    .select("id, display_name, blocked, session_invalidated_at, last_seen")
     .eq("id", session.id).maybeSingle();
 
   if (!selfAdmin || selfAdmin.blocked) return json({ ok: false, error: "Account suspended" }, 403);
@@ -187,8 +217,11 @@ serve(async (req) => {
     }
   }
 
-  // Update last_seen heartbeat
-  await db.from("admins").update({ last_seen: new Date().toISOString() }).eq("id", session.id);
+  // Update last_seen heartbeat (at most once a minute, in the background)
+  const lastSeenMs = selfAdmin.last_seen ? new Date(selfAdmin.last_seen).getTime() : 0;
+  if (Date.now() - lastSeenMs > 60_000) {
+    background(Promise.resolve(db.from("admins").update({ last_seen: new Date().toISOString() }).eq("id", session.id)));
+  }
 
   try {
 
@@ -345,42 +378,81 @@ serve(async (req) => {
 
     // ── LIVE CHAT (ADMIN SIDE) ────────────────────────────────────────────────
     if (path === "/chat/conversations" && req.method === "GET") {
-      const { data } = await db.from("conversations")
-        .select("id, session_id, customer_name, status, created_at, updated_at")
+      const { data: convs } = await db.from("conversations")
+        .select("id, customer_name, status, created_at, updated_at")
         .order("updated_at", { ascending: false }).limit(100);
-      return json({ ok: true, data: data || [] });
+      const list = convs || [];
+      // Attach last message preview + whether the customer is waiting for a reply
+      const last: Record<string, any> = {};
+      const counts: Record<string, number> = {};
+      if (list.length) {
+        const { data: msgs } = await db.from("messages")
+          .select("conversation_id, sender, text, created_at")
+          .in("conversation_id", list.map(c => c.id))
+          .order("created_at", { ascending: false }).limit(2000);
+        for (const m of msgs || []) {
+          counts[m.conversation_id] = (counts[m.conversation_id] || 0) + 1;
+          if (!last[m.conversation_id]) last[m.conversation_id] = m;
+        }
+      }
+      const data = list.map(c => ({
+        ...c,
+        last_text: last[c.id]?.text || "",
+        last_sender: last[c.id]?.sender || "",
+        needs_reply: c.status === "open" && last[c.id]?.sender === "customer",
+        message_count: counts[c.id] || 0,
+      }));
+      return json({ ok: true, data });
     }
 
     if (path === "/chat/messages" && req.method === "GET") {
       const convId = url.searchParams.get("conversation_id");
-      const since = url.searchParams.get("since") || new Date(0).toISOString();
+      const since = safeIso(url.searchParams.get("since"));
       if (!convId) return json({ ok: false, error: "Missing conversation_id" }, 400);
-      const { data } = await db.from("messages")
-        .select("id, sender, sender_name, text, created_at")
-        .eq("conversation_id", convId)
-        .gt("created_at", since)
-        .order("created_at", { ascending: true });
-      return json({ ok: true, messages: data || [] });
+      const [{ data }, { data: conv }] = await Promise.all([
+        db.from("messages")
+          .select("id, sender, sender_name, text, created_at")
+          .eq("conversation_id", convId)
+          .gt("created_at", since)
+          .order("created_at", { ascending: true }),
+        db.from("conversations").select("status").eq("id", convId).maybeSingle(),
+      ]);
+      return json({ ok: true, messages: data || [], status: conv?.status || "gone" });
     }
 
     if (path === "/chat/reply" && req.method === "POST") {
       const body = await req.json();
       const { conversation_id, text } = body;
       if (!conversation_id || !text?.trim()) return json({ ok: false, error: "Missing fields" }, 400);
-      await db.from("messages").insert({
-        conversation_id,
-        sender: "admin",
-        sender_name: (selfAdmin as any)?.display_name || session.username || "Astro World",
-        text: text.trim().slice(0, 1000),
-      });
-      await db.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", conversation_id);
-      return json({ ok: true });
+      const [{ data: msg, error }] = await Promise.all([
+        db.from("messages").insert({
+          conversation_id,
+          sender: "admin",
+          sender_name: selfAdmin.display_name || session.username || "Astro World",
+          text: String(text).trim().slice(0, 1000),
+        }).select("id, sender, sender_name, text, created_at").single(),
+        db.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", conversation_id),
+      ]);
+      if (error) return json({ ok: false, error: "Could not send" }, 500);
+      return json({ ok: true, message: msg });
     }
 
     if (path === "/chat/close" && req.method === "POST") {
       const { conversation_id } = await req.json();
       await db.from("conversations").update({ status: "closed" }).eq("id", conversation_id);
       return json({ ok: true });
+    }
+
+    // Delete one conversation, or all closed ones
+    if (path === "/chat/delete" && req.method === "POST") {
+      const { conversation_id, all_closed } = await req.json();
+      if (all_closed) {
+        const { data } = await db.from("conversations").delete().eq("status", "closed").select("id");
+        return json({ ok: true, deleted: data?.length || 0 });
+      }
+      if (!conversation_id) return json({ ok: false, error: "Missing conversation_id" }, 400);
+      await db.from("conversations").delete().eq("id", conversation_id);
+      return json({ ok: true, deleted: 1 });
     }
 
     // ── ADMINS (read + profile self-edit) ────────────────────────────────────
