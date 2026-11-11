@@ -85,11 +85,11 @@ function escTg(s: string) {
   return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-// Only accept real timestamps for "since" filters
+// Only accept real timestamps for "since" filters (keep full microsecond precision)
 function safeIso(v: string | null) {
   if (!v) return new Date(0).toISOString();
   const d = new Date(v);
-  return isNaN(d.getTime()) ? new Date(0).toISOString() : d.toISOString();
+  return isNaN(d.getTime()) ? new Date(0).toISOString() : v.trim();
 }
 
 serve(async (req) => {
