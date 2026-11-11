@@ -544,6 +544,32 @@ setTimeout(() => { $("#ld").classList.add("out"); }, matchMedia("(prefers-reduce
   const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const scrollDown = () => { const m = el("cw-msgs"); m.scrollTop = m.scrollHeight; };
 
+  // Crisp Web-Audio notification tunes (no external files needed)
+  let actx = null;
+  function getCtx() {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === "suspended") actx.resume();
+    return actx;
+  }
+  function playNotes(notes) {
+    try {
+      const ctx = getCtx(), t0 = ctx.currentTime;
+      for (const [freq, start, dur, vol = 0.1, type = "sine"] of notes) {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = type; o.frequency.setValueAtTime(freq, t0 + start);
+        g.gain.setValueAtTime(0.0001, t0 + start);
+        g.gain.exponentialRampToValueAtTime(vol, t0 + start + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + start + dur);
+        o.connect(g); g.connect(ctx.destination);
+        o.start(t0 + start); o.stop(t0 + start + dur + 0.02);
+      }
+    } catch (e) {}
+  }
+  // Sent pop (soft upward pop like WhatsApp)
+  const sndSent = () => playNotes([[520, 0, 0.07, 0.08, "sine"], [780, 0.045, 0.09, 0.09, "triangle"]]);
+  // Incoming reply tune (bright 3-note cosmic chime)
+  const sndRecv = () => playNotes([[587.33, 0, 0.14, 0.12, "triangle"], [880, 0.09, 0.16, 0.13, "triangle"], [1174.66, 0.19, 0.28, 0.12, "sine"]]);
+
   function toggle(force) {
     open = typeof force === "boolean" ? force : !open;
     el("cw-box").classList.toggle("open", open);
@@ -649,6 +675,7 @@ setTimeout(() => { $("#ld").classList.add("out"); }, matchMedia("(prefers-reduce
         if (d.message.created_at > since) since = d.message.created_at;
       }
       row.querySelector(".cw-tick").textContent = "✓ Sent";
+      sndSent();
       setTimeout(() => row.querySelector(".cw-tick")?.remove(), 2500);
       poll();
     } catch (err) {
@@ -671,11 +698,13 @@ setTimeout(() => { $("#ld").classList.add("out"); }, matchMedia("(prefers-reduce
     try {
       const r = await fetch(API + "/chat/poll?session_id=" + encodeURIComponent(sess) + "&since=" + encodeURIComponent(since));
       const d = await r.json();
+      let gotNew = false;
       for (const m of d.messages || []) {
         if (m.created_at > since) since = m.created_at;
         if (m.sender === "customer") { seen.add(m.id); continue; }
-        if (addMsg(m, false) && !open) { unread++; badge(); }
+        if (addMsg(m, false)) { gotNew = true; if (!open) { unread++; badge(); } }
       }
+      if (gotNew) sndRecv();
       if (d.status === "closed" || d.status === "gone") showChatEnded();
     } catch (e) { /* network blip — try again next tick */ }
     finally { busy = false; }

@@ -527,7 +527,7 @@ function logout() {
   localStorage.removeItem("astro_admin_token");
   localStorage.removeItem("astro_admin_user");
   if (typeof closeActiveView === "function" && activeConvId) closeActiveView();
-  CONVS = []; lastWaitingCount = 0;
+  CONVS = []; lastWaitingCount = 0; prevStats = null;
   checkAuth();
 }
 $("#btnLogout").addEventListener("click", logout);
@@ -548,6 +548,7 @@ $$(".tab-btn").forEach(btn => btn.addEventListener("click", () => {
 }));
 
 // ── INIT ─────────────────────────────────────────────────────────────────
+let prevStats = null;
 function initDashboard() { loadStats(); loadAdminsOverview(); }
 
 async function loadStats() {
@@ -562,6 +563,12 @@ async function loadStats() {
   setBadge("bBadge", s.bookingsPending);
   setBadge("rBadge", s.requestsNew);
   setBadge("rvBadge", s.reviewsPending);
+  if (prevStats) {
+    if (s.bookingsTotal > prevStats.bookingsTotal) { sndAdminAlert(); toast("📅 New service booking received!"); }
+    else if (s.requestsTotal > prevStats.requestsTotal) { sndAdminAlert(); toast("🎬 New movie/series request received!"); }
+    else if (s.reviewsTotal > prevStats.reviewsTotal) { sndAdminAlert(); toast("⭐ New customer review submitted!"); }
+  }
+  prevStats = s;
 }
 
 function setBadge(id, count) {
@@ -847,15 +854,20 @@ async function pollChatMessages() {
   if (!activeConvId || msgPollBusy) return;
   msgPollBusy = true;
   const convId = activeConvId;
+  const isInitialLoad = chatLastSince === new Date(0).toISOString();
   try {
     const r = await api(`/chat/messages?conversation_id=${convId}&since=${encodeURIComponent(chatLastSince)}`);
     if (convId !== activeConvId || !r?.ok) return;
     if (r.messages.length) {
       const box = $("#chatMsgs");
       const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
-      r.messages.forEach(m => appendMsg(m));
+      let hasNewCust = false;
+      r.messages.forEach(m => {
+        if (appendMsg(m) && m.sender === "customer") hasNewCust = true;
+      });
       chatLastSince = r.messages[r.messages.length - 1].created_at;
       if (nearBottom) box.scrollTop = box.scrollHeight;
+      if (!isInitialLoad && hasNewCust) sndChatRecv();
     }
     if (r.status) setChatStatus(r.status);
   } finally { msgPollBusy = false; }
@@ -897,6 +909,7 @@ async function sendReply() {
     if (r.message.created_at > chatLastSince) chatLastSince = r.message.created_at;
     tmp.classList.remove("pending");
     tmp.querySelector(".msg-tick")?.remove();
+    sndChatSent();
     loadConversations();
   } else {
     tmp.classList.replace("pending", "failed");
@@ -939,14 +952,33 @@ async function deleteClosedChats() {
   } else toast(r?.error || "Failed", true);
 }
 
-// Little "ding" + title flash when a new customer is waiting
-function notifyNewChat() {
+// ── NOTIFICATION TUNES (Web Audio) ────────────────────────────────────────
+let _actx = null;
+function playTune(notes) {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const o = ctx.createOscillator(), g = ctx.createGain();
-    o.frequency.value = 880; g.gain.value = 0.08;
-    o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime + 0.15);
+    if (!_actx) _actx = new (window.AudioContext || window.webkitAudioContext)();
+    if (_actx.state === "suspended") _actx.resume();
+    const t0 = _actx.currentTime;
+    for (const [freq, start, dur, vol = 0.11, type = "sine"] of notes) {
+      const o = _actx.createOscillator(), g = _actx.createGain();
+      o.type = type; o.frequency.setValueAtTime(freq, t0 + start);
+      g.gain.setValueAtTime(0.0001, t0 + start);
+      g.gain.exponentialRampToValueAtTime(vol, t0 + start + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + start + dur);
+      o.connect(g); g.connect(_actx.destination);
+      o.start(t0 + start); o.stop(t0 + start + dur + 0.02);
+    }
   } catch {}
+}
+// Outgoing admin reply pop
+const sndChatSent = () => playTune([[520, 0, 0.07, 0.08, "sine"], [780, 0.045, 0.09, 0.09, "triangle"]]);
+// Incoming customer chat melody (bright 3-note cosmic chime)
+const sndChatRecv = () => playTune([[587.33, 0, 0.14, 0.13, "triangle"], [880, 0.09, 0.16, 0.14, "triangle"], [1174.66, 0.19, 0.28, 0.13, "sine"]]);
+// New Booking / Request / Review alert fanfare
+const sndAdminAlert = () => playTune([[523.25, 0, 0.12, 0.13, "triangle"], [659.25, 0.1, 0.12, 0.13, "triangle"], [783.99, 0.2, 0.14, 0.14, "triangle"], [1046.5, 0.32, 0.32, 0.15, "sine"]]);
+
+function notifyNewChat() {
+  sndChatRecv();
   if (document.hidden) {
     const orig = "Astro World Admin Portal";
     document.title = "💬 New chat message!";
