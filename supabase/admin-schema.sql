@@ -10,7 +10,7 @@ create table if not exists public.admins (
 
 alter table public.admins enable row level security;
 
--- Default 4 admin accounts (password: astro2026!)
+-- Initial 4 admin accounts (change passwords in Admin Portal -> My Account -> Change Password)
 insert into public.admins (username, password_hash, display_name, role)
 values
   ('owner', 'db812db08007152375fbf084d0664856b2633f7d0594fa2599a31edae8dbf393', 'Shop Owner', 'Owner'),

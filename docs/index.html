@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Astro World Cyber</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪐</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -129,6 +130,7 @@ footer .logo{font-size:22px;margin-bottom:6px}
         <h3>Request a movie or series</h3>
         <input name="website" type="text" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;opacity:0;height:0;width:0" aria-hidden="true">
         <label>Your name<input name="n" autocomplete="name" required></label>
+        <label>Phone (WhatsApp)<input name="p" type="tel" autocomplete="tel" placeholder="07XX XXX XXX" required></label>
         <label>Title you want<input name="t" required></label>
         <label>Type<select name="k"><option>Movie</option><option>Series</option><option>Music</option></select></label>
         <button class="btn" type="submit">Send request</button>
@@ -314,7 +316,8 @@ buildGenres();
 render();
 renderReviews();
 
-$("#bkD").min = new Date().toISOString().slice(0, 10);
+const _now = new Date();
+$("#bkD").min = new Date(_now.getTime() - _now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
 async function postIntake(payload) {
   if (!API) return null;
@@ -338,6 +341,7 @@ $("#reqF").addEventListener("submit", async e => {
   const payload = {
     type: "request",
     n: d.get("n"),
+    p: d.get("p") || "",
     t: d.get("t"),
     k: d.get("k"),
     website: d.get("website") || ""
@@ -350,7 +354,7 @@ $("#reqF").addEventListener("submit", async e => {
   } else {
     ok(f, "Connecting to WhatsApp...", true);
     setTimeout(() => {
-      wa("Hi Astro World, I’d like to request a " + d.get("k") + ": " + d.get("t") + ". My name is " + d.get("n") + ".");
+      wa("Hi Astro World, I’d like to request a " + d.get("k") + ": " + d.get("t") + ". My name is " + d.get("n") + (d.get("p") ? " (" + d.get("p") + ")" : "") + ".");
     }, 600);
   }
 });

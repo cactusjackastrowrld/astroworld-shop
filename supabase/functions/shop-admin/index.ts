@@ -4,8 +4,27 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 const siteOrigin = Deno.env.get("SITE_ORIGIN") || "https://cactusjackastrowrld.github.io";
 const botToken = Deno.env.get("SHOP_BOT_TOKEN") ?? "";
 const ownerId = Deno.env.get("SHOP_OWNER_ID") ?? "";
-const webhookSecret = Deno.env.get("SHOP_WEBHOOK_SECRET") || "astro-secret-key-2026";
+const webhookSecret = Deno.env.get("SHOP_WEBHOOK_SECRET") ?? "";
 const SALT = "astro-world-salt-2026";
+
+async function hashIp(ip: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(ip));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+function getClientIp(req: Request): string {
+  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    req.headers.get("cf-connecting-ip") || "127.0.0.1";
+}
+
+async function isRateLimited(db: any, ipHash: string, maxAttempts: number, windowMinutes = 10): Promise<boolean> {
+  const since = new Date(Date.now() - windowMinutes * 60 * 1000).toISOString();
+  const { count } = await db.from("rate_limits")
+    .select("id", { count: "exact", head: true })
+    .eq("ip_hash", ipHash)
+    .gte("created_at", since);
+  return count !== null && count >= maxAttempts;
+}
 
 function isAllowedOrigin(o: string | null) {
   if (!o || o === "null") return true;
@@ -28,6 +47,7 @@ async function hashPassword(p: string) {
 }
 
 async function createToken(payload: { id: string; username: string; role: string; iat: number }) {
+  if (!webhookSecret) throw new Error("Server misconfigured: missing signing secret");
   const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }));
   const exp = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60;
   const body = btoa(JSON.stringify({ ...payload, exp }));
@@ -42,6 +62,7 @@ async function createToken(payload: { id: string; username: string; role: string
 
 async function verifyToken(token: string): Promise<any | null> {
   try {
+    if (!webhookSecret) return null;
     const parts = token.split(".");
     if (parts.length !== 3) return null;
     const unsigned = `${parts[0]}.${parts[1]}`;
@@ -111,6 +132,11 @@ serve(async (req) => {
 
   // Customer starts a NEW chat session (every page load = fresh chat)
   if (path === "/chat/open" && req.method === "POST") {
+    const ipHash = await hashIp("chat:" + getClientIp(req));
+    if (await isRateLimited(db, ipHash, 10, 10)) {
+      return json({ ok: false, error: "Too many chat sessions opened. Please wait a few minutes." }, 429);
+    }
+    background(Promise.resolve(db.from("rate_limits").insert({ ip_hash: ipHash })));
     const body = await req.json().catch(() => ({}));
     const name = String(body.name || "Customer").trim().slice(0, 40) || "Customer";
     const sessionId = crypto.randomUUID();
@@ -176,7 +202,12 @@ serve(async (req) => {
 
   // Public login
   if (path === "/login" && req.method === "POST") {
-    const body = await req.json();
+    const ipHash = await hashIp("login:" + getClientIp(req));
+    if (await isRateLimited(db, ipHash, 10, 15)) {
+      return json({ ok: false, error: "Too many failed login attempts. Try again in 15 minutes." }, 429);
+    }
+
+    const body = await req.json().catch(() => ({}));
     const username = (body.username || "").trim().toLowerCase();
     const password = body.password || "";
     if (!username || !password) return json({ ok: false, error: "Username and password required" }, 400);
@@ -186,7 +217,10 @@ serve(async (req) => {
       .select("id, username, password_hash, display_name, role, blocked")
       .eq("username", username).maybeSingle();
 
-    if (!admin || admin.password_hash !== hash) return json({ ok: false, error: "Invalid username or password" }, 401);
+    if (!admin || admin.password_hash !== hash) {
+      await db.from("rate_limits").insert({ ip_hash: ipHash });
+      return json({ ok: false, error: "Invalid username or password" }, 401);
+    }
     if (admin.blocked) return json({ ok: false, error: "This account has been suspended. Contact the shop owner." }, 403);
 
     const iat = Math.floor(Date.now() / 1000);
@@ -238,7 +272,7 @@ serve(async (req) => {
         db.from("requests").select("id", { count: "exact", head: true }),
         db.from("requests").select("id", { count: "exact", head: true }).eq("status", "new"),
         db.from("reviews").select("id", { count: "exact", head: true }),
-        db.from("reviews").select("id", { count: "exact", head: true }).eq("approved", false),
+        db.from("reviews").select("id", { count: "exact", head: true }).eq("status", "pending"),
         db.from("conversations").select("id", { count: "exact", head: true }).eq("status", "open"),
       ]);
       return json({ ok: true, stats: {
@@ -295,11 +329,14 @@ serve(async (req) => {
       if (req.method === "GET") {
         const { data, error } = await db.from("reviews").select("*").order("created_at", { ascending: false }).limit(200);
         if (error) throw error;
-        return json({ ok: true, data });
+        const rows = (data || []).map((r: any) => ({ ...r, approved: r.status === "approved" }));
+        return json({ ok: true, data: rows });
       }
       if (req.method === "PATCH") {
-        const { id, approved } = await req.json();
-        const { error } = await db.from("reviews").update({ approved }).eq("id", id);
+        const body = await req.json();
+        const { id, approved, status } = body;
+        const nextStatus = status || (approved ? "approved" : "pending");
+        const { error } = await db.from("reviews").update({ status: nextStatus }).eq("id", id);
         if (error) throw error;
         return json({ ok: true });
       }
@@ -339,10 +376,10 @@ serve(async (req) => {
         }).select().single();
         if (error) throw error;
         if (announce_telegram && botToken && ownerId) {
-          const cap = `🔥 <b>New Title Added!</b>\n🎬 <b>${data.title}</b>\n` +
-            (data.subtitle ? `📌 <i>${data.subtitle}</i>\n` : "") +
-            `📂 ${data.category.toUpperCase()}` + (data.sub ? ` (${data.sub})` : "") + `\n` +
-            `🏷️ ${data.genres.join(", ")}\n\n📝 ${data.description || "Available now at Astro World Cyber!"}`;
+          const cap = `🔥 <b>New Title Added!</b>\n🎬 <b>${escTg(data.title)}</b>\n` +
+            (data.subtitle ? `📌 <i>${escTg(data.subtitle)}</i>\n` : "") +
+            `📂 ${escTg(data.category.toUpperCase())}` + (data.sub ? ` (${escTg(data.sub)})` : "") + `\n` +
+            `🏷️ ${escTg(data.genres.join(", "))}\n\n📝 ${escTg(data.description || "Available now at Astro World Cyber!")}`;
           if (data.image_path?.startsWith("http")) await tgPhoto(data.image_path, cap);
           else await tgMessage(cap);
         }
@@ -468,11 +505,17 @@ serve(async (req) => {
       if (!current_password || !new_password || new_password.length < 6)
         return json({ ok: false, error: "New password must be at least 6 characters" }, 400);
       const curHash = await hashPassword(current_password);
-      const { data: admin } = await db.from("admins").select("password_hash").eq("id", session.id).single();
+      const { data: admin } = await db.from("admins").select("password_hash, username, role").eq("id", session.id).single();
       if (!admin || admin.password_hash !== curHash) return json({ ok: false, error: "Current password incorrect" }, 400);
-      const { error } = await db.from("admins").update({ password_hash: await hashPassword(new_password) }).eq("id", session.id);
+      const nowIso = new Date().toISOString();
+      const { error } = await db.from("admins").update({
+        password_hash: await hashPassword(new_password),
+        session_invalidated_at: nowIso,
+      }).eq("id", session.id);
       if (error) throw error;
-      return json({ ok: true });
+      const iat = Math.floor(new Date(nowIso).getTime() / 1000) + 1;
+      const newToken = await createToken({ id: session.id, username: admin.username, role: admin.role, iat });
+      return json({ ok: true, token: newToken });
     }
 
     if (path === "/update-profile" && req.method === "POST") {

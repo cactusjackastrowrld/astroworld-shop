@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Astro World Admin Portal</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪐</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -56,7 +57,7 @@ tr:hover td{background:#140c3488}
 .tag.new,.tag.open{background:#ffd23f26;color:var(--yel);border:1px solid #ffd23f55}
 .tag.confirmed,.tag.ready{background:#2ee6ff26;color:var(--cyan);border:1px solid #2ee6ff55}
 .tag.completed,.tag.approved{background:#39ff8826;color:var(--grn);border:1px solid #39ff8855}
-.tag.blocked,.tag.cancelled{background:#ff445526;color:var(--red);border:1px solid #ff445555}
+.tag.blocked,.tag.cancelled,.tag.rejected{background:#ff445526;color:var(--red);border:1px solid #ff445555}
 .tag.pending{background:#8b5cff26;color:var(--pur);border:1px solid #8b5cff55}
 
 /* stats */
@@ -455,6 +456,7 @@ let convPollTimer = null;
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
+const esc = s => String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 
 function toast(msg, err = false) {
   const t = $("#toast");
@@ -474,6 +476,7 @@ async function api(path, method = "GET", body = null) {
       const d = await r.json();
       if (r.status === 401) { logout(); return null; }
       toast(d.error || "Forbidden", true);
+      if (d.error && /suspended/i.test(d.error)) logout();
       return null;
     }
     return await r.json();
@@ -587,9 +590,9 @@ async function loadAdminsOverview() {
     const d = document.createElement("div");
     d.style.cssText = "display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--card);border-radius:10px;border:1px solid var(--line)";
     d.innerHTML = `<span class="online-dot ${isOnline ? 'online' : ''}"></span>
-      <span style="font-weight:600">${a.display_name}</span>
-      <span style="color:var(--mut);font-size:12px">@${a.username}</span>
-      <span class="tag ${a.blocked ? 'blocked' : 'confirmed'}" style="margin-left:auto">${a.blocked ? '🔴 Blocked' : a.role}</span>`;
+      <span style="font-weight:600">${esc(a.display_name)}</span>
+      <span style="color:var(--mut);font-size:12px">@${esc(a.username)}</span>
+      <span class="tag ${a.blocked ? 'blocked' : 'confirmed'}" style="margin-left:auto">${a.blocked ? '🔴 Blocked' : esc(a.role)}</span>`;
     box.appendChild(d);
   });
 }
@@ -605,19 +608,20 @@ async function loadBookings() {
     const tr = document.createElement("tr");
     const phone = b.phone?.replace(/[^0-9]/g, "") || "";
     const wa = phone ? `https://wa.me/${phone.startsWith("0") ? "254" + phone.slice(1) : phone}?text=${encodeURIComponent(`Hi ${b.name}, this is Astro World Cyber regarding your ${b.service} booking on ${b.date} at ${b.time}.`)}` : "";
+    const isDone = b.status === "completed" || b.status === "done";
     tr.innerHTML = `
-      <td><b>${b.date}</b><br><small style="color:var(--mut)">${b.time}</small></td>
-      <td><b>${b.name}</b></td>
-      <td>${wa ? `<a href="${wa}" target="_blank" class="btn wa sm">💬 ${b.phone}</a>` : (b.phone || "—")}</td>
-      <td>${b.service}</td>
-      <td style="color:var(--mut);max-width:180px"><small>${b.notes || "—"}</small></td>
-      <td><select onchange="patchBooking('${b.id}',this.value)" style="padding:4px 7px;font-size:12px">
+      <td><b>${esc(b.date)}</b><br><small style="color:var(--mut)">${esc(b.time)}</small></td>
+      <td><b>${esc(b.name)}</b></td>
+      <td>${wa ? `<a href="${esc(wa)}" target="_blank" rel="noopener" class="btn wa sm">💬 ${esc(b.phone)}</a>` : esc(b.phone || "—")}</td>
+      <td>${esc(b.service)}</td>
+      <td style="color:var(--mut);max-width:180px"><small>${esc(b.notes || "—")}</small></td>
+      <td><select onchange="patchBooking('${esc(b.id)}',this.value)" style="padding:4px 7px;font-size:12px">
         <option value="new" ${b.status==="new"?"selected":""}>🟡 New</option>
         <option value="confirmed" ${b.status==="confirmed"?"selected":""}>🔵 Confirmed</option>
-        <option value="completed" ${b.status==="completed"?"selected":""}>🟢 Done</option>
+        <option value="completed" ${isDone?"selected":""}>🟢 Done</option>
         <option value="cancelled" ${b.status==="cancelled"?"selected":""}>🔴 Cancelled</option>
       </select></td>
-      <td><button class="btn danger sm" onclick="del('bookings','${b.id}',loadBookings)">🗑</button></td>`;
+      <td><button class="btn danger sm" onclick="del('bookings','${esc(b.id)}',loadBookings)">🗑</button></td>`;
     box.appendChild(tr);
   });
 }
@@ -635,17 +639,18 @@ async function loadRequests() {
     const d = new Date(b.created_at).toLocaleDateString();
     const phone = b.phone?.replace(/[^0-9]/g,"") || "";
     const wa = phone ? `https://wa.me/${phone.startsWith("0")?"254"+phone.slice(1):phone}?text=${encodeURIComponent(`Hi ${b.name}, your requested title "${b.title}" is ready at Astro World Cyber!`)}` : "";
+    const isDone = b.status === "completed" || b.status === "done";
     tr.innerHTML = `
-      <td>${d}</td><td><b>${b.name}</b></td>
-      <td>${wa ? `<a href="${wa}" target="_blank" class="btn wa sm">💬 ${b.phone}</a>` : (b.phone||"—")}</td>
-      <td><b style="color:var(--cyan)">${b.title}</b></td>
-      <td><span class="tag new">${b.kind||"movie"}</span></td>
-      <td><select onchange="patchReq('${b.id}',this.value)" style="padding:4px 7px;font-size:12px">
+      <td>${esc(d)}</td><td><b>${esc(b.name)}</b></td>
+      <td>${wa ? `<a href="${esc(wa)}" target="_blank" rel="noopener" class="btn wa sm">💬 ${esc(b.phone)}</a>` : esc(b.phone||"—")}</td>
+      <td><b style="color:var(--cyan)">${esc(b.title)}</b></td>
+      <td><span class="tag new">${esc(b.kind||"movie")}</span></td>
+      <td><select onchange="patchReq('${esc(b.id)}',this.value)" style="padding:4px 7px;font-size:12px">
         <option value="new" ${b.status==="new"?"selected":""}>🟡 New</option>
         <option value="ready" ${b.status==="ready"?"selected":""}>🟢 Ready</option>
-        <option value="completed" ${b.status==="completed"?"selected":""}>✅ Done</option>
+        <option value="completed" ${isDone?"selected":""}>✅ Done</option>
       </select></td>
-      <td><button class="btn danger sm" onclick="del('requests','${b.id}',loadRequests)">🗑</button></td>`;
+      <td><button class="btn danger sm" onclick="del('requests','${esc(b.id)}',loadRequests)">🗑</button></td>`;
     box.appendChild(tr);
   });
 }
@@ -661,20 +666,23 @@ async function loadReviews() {
   r.data.forEach(rv => {
     const tr = document.createElement("tr");
     const stars = "★".repeat(rv.rating) + "☆".repeat(Math.max(0, 5-rv.rating));
+    const st = rv.status || (rv.approved ? "approved" : "pending");
+    const isLive = st === "approved";
+    const label = isLive ? "Live" : st === "rejected" ? "Rejected" : "Pending";
     tr.innerHTML = `
-      <td>${new Date(rv.created_at).toLocaleDateString()}</td>
-      <td><b>${rv.name}</b></td>
+      <td>${esc(new Date(rv.created_at).toLocaleDateString())}</td>
+      <td><b>${esc(rv.name)}</b></td>
       <td style="color:var(--yel);letter-spacing:2px">${stars}</td>
-      <td style="color:var(--mut);max-width:280px">${rv.body}</td>
-      <td><span class="tag ${rv.approved?"approved":"pending"}">${rv.approved?"Live":"Pending"}</span></td>
+      <td style="color:var(--mut);max-width:280px">${esc(rv.body)}</td>
+      <td><span class="tag ${esc(st)}">${label}</span></td>
       <td style="white-space:nowrap">
-        <button class="btn ${rv.approved?"alt":"grn"} sm" onclick="toggleRv('${rv.id}',${!rv.approved})">${rv.approved?"Hide":"✅ Approve"}</button>
-        <button class="btn danger sm" onclick="del('reviews','${rv.id}',loadReviews)">🗑</button>
+        <button class="btn ${isLive?"alt":"grn"} sm" onclick="toggleRv('${esc(rv.id)}','${isLive?"pending":"approved"}')">${isLive?"Hide":"✅ Approve"}</button>
+        <button class="btn danger sm" onclick="del('reviews','${esc(rv.id)}',loadReviews)">🗑</button>
       </td>`;
     box.appendChild(tr);
   });
 }
-window.toggleRv = async (id,approved) => { const r = await api("/reviews","PATCH",{id,approved}); if(r?.ok){toast(approved?"Approved!":"Hidden");loadReviews();loadStats();} };
+window.toggleRv = async (id,status) => { const isApp = status === "approved" || status === true; const next = isApp ? "approved" : "pending"; const r = await api("/reviews","PATCH",{id,status:next,approved:isApp}); if(r?.ok){toast(isApp?"Approved!":"Hidden");loadReviews();loadStats();} };
 
 // ── CATALOG ──────────────────────────────────────────────────────────────
 let CAT_DATA = [];
@@ -693,15 +701,15 @@ function renderCatalog(items) {
     const el = document.createElement("div");
     el.className = "cat-item";
     el.innerHTML = `
-      <div class="cat-thumb">${c.img ? `<img src="${c.img}" alt="${c.title}" loading="lazy">` : `<div style="padding:40px 0;text-align:center;color:var(--mut)">No image</div>`}
+      <div class="cat-thumb">${c.img ? `<img src="${esc(c.img)}" alt="${esc(c.title)}" loading="lazy">` : `<div style="padding:40px 0;text-align:center;color:var(--mut)">No image</div>`}
         ${c.trending ? '<span class="badge admin" style="position:absolute;top:7px;left:7px">🔥</span>' : ''}</div>
       <div class="cat-body">
-        <div class="cat-title">${c.title}</div>
-        <div class="cat-subt">${c.subtitle || c.category.toUpperCase()}</div>
-        <div class="cat-genres">${(c.genres||[]).join(", ")}</div>
+        <div class="cat-title">${esc(c.title)}</div>
+        <div class="cat-subt">${esc(c.subtitle || c.category.toUpperCase())}</div>
+        <div class="cat-genres">${esc((c.genres||[]).join(", "))}</div>
         <div class="cat-actions">
-          <button class="btn ${c.trending?"alt":"cyan"} sm" style="flex:1" onclick="toggleTrend('${c.id}',${!c.trending})">${c.trending?"Untrend":"🔥 Trend"}</button>
-          <button class="btn danger sm" onclick="del('catalog','${c.id}',loadCatalog)">🗑</button>
+          <button class="btn ${c.trending?"alt":"cyan"} sm" style="flex:1" onclick="toggleTrend('${esc(c.id)}',${!c.trending})">${c.trending?"Untrend":"🔥 Trend"}</button>
+          <button class="btn danger sm" onclick="del('catalog','${esc(c.id)}',loadCatalog)">🗑</button>
         </div>
       </div>`;
     box.appendChild(el);
@@ -749,7 +757,6 @@ let seenMsgIds = new Set();
 let lastMsgSender = null, lastMsgDay = null;
 let msgPollBusy = false, convLoadBusy = false;
 let lastWaitingCount = 0;
-const esc = s => String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 const initial = n => esc((String(n || "?").trim()[0] || "?").toUpperCase());
 function shortTime(iso) {
   const d = new Date(iso), now = new Date();
@@ -1016,20 +1023,23 @@ async function loadAdmins() {
     row.innerHTML = `
       <span class="online-dot ${isOnline?"online":""}"></span>
       <div class="admin-info">
-        <div style="font-weight:700">${a.display_name} ${isSelf ? '<span class="badge admin" style="font-size:10px;padding:2px 7px">You</span>' : ''}</div>
-        <div style="font-size:12px;color:var(--mut)">@${a.username} · ${a.role}</div>
-        ${a.last_seen ? `<div style="font-size:11px;color:var(--mut)">Last seen: ${new Date(a.last_seen).toLocaleString()}</div>` : ''}
+        <div style="font-weight:700">${esc(a.display_name)} ${isSelf ? '<span class="badge admin" style="font-size:10px;padding:2px 7px">You</span>' : ''}</div>
+        <div style="font-size:12px;color:var(--mut)">@${esc(a.username)} · ${esc(a.role)}</div>
+        ${a.last_seen ? `<div style="font-size:11px;color:var(--mut)">Last seen: ${esc(new Date(a.last_seen).toLocaleString())}</div>` : ''}
       </div>
       <div class="admin-actions">
         ${isOwner && !isSelf ? `
           ${a.blocked
-            ? `<button class="btn grn sm" onclick="adminAction('unblock','${a.id}','${a.display_name}')">✅ Unblock</button>`
-            : `<button class="btn yel sm" onclick="adminAction('block','${a.id}','${a.display_name}')">🔒 Block</button>`}
-          <button class="btn alt sm" onclick="adminAction('force-logout','${a.id}','${a.display_name}')">⏏ Logout</button>
-          <button class="btn danger sm" onclick="adminAction('delete','${a.id}','${a.display_name}')">🗑 Delete</button>
+            ? `<button class="btn grn sm" data-adm-act="unblock">✅ Unblock</button>`
+            : `<button class="btn yel sm" data-adm-act="block">🔒 Block</button>`}
+          <button class="btn alt sm" data-adm-act="force-logout">⏏ Logout</button>
+          <button class="btn danger sm" data-adm-act="delete">🗑 Delete</button>
         ` : ""}
         <span class="tag ${a.blocked?"blocked":isOnline?"confirmed":"pending"}">${a.blocked?"Blocked":isOnline?"Online":"Offline"}</span>
       </div>`;
+    row.querySelectorAll("[data-adm-act]").forEach(btn => {
+      btn.addEventListener("click", () => window.adminAction(btn.dataset.admAct, a.id, a.display_name));
+    });
     box.appendChild(row);
   });
   loadAdminsOverview();
@@ -1079,7 +1089,10 @@ $("#pwdF").addEventListener("submit", async e => {
   e.preventDefault();
   if($("#newP").value !== $("#confP").value){ $("#pwdMsg").textContent = "Passwords do not match"; return; }
   const r = await api("/change-password","POST",{current_password:$("#curP").value,new_password:$("#newP").value});
-  if(r?.ok){ toast("Password updated!"); $("#pwdF").reset(); $("#pwdMsg").textContent = ""; }
+  if(r?.ok){
+    if (r.token) { TOKEN = r.token; localStorage.setItem("astro_admin_token", TOKEN); }
+    toast("Password updated!"); $("#pwdF").reset(); $("#pwdMsg").textContent = "";
+  }
   else { $("#pwdMsg").textContent = r?.error||"Failed"; }
 });
 
