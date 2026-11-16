@@ -206,7 +206,7 @@ form.grid{display:grid;gap:12px}
           <option value="Owner">Owner</option>
         </select>
       </label>
-      <label>Password (min 6 characters) <input type="password" id="aaPass" required minlength="6"></label>
+      <label>Password (min 12 characters) <input type="password" id="aaPass" required minlength="12"></label>
       <div class="errmsg" id="aaMsg"></div>
       <button class="btn grn" type="submit">Create Admin Account</button>
     </form>
@@ -409,7 +409,10 @@ form.grid{display:grid;gap:12px}
   <div class="tab-pane" id="tab-team" style="display:none">
     <div class="card" id="teamCard">
       <h2>👥 Admin Team
-        <button class="btn grn sm" id="btnAddAdmin" onclick="openAddAdmin()" style="display:none">➕ Add Admin</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn yel sm" id="btnForceLogoutAll" onclick="forceLogoutAll()" style="display:none">⏏ Force-Logout All Staff</button>
+          <button class="btn grn sm" id="btnAddAdmin" onclick="openAddAdmin()" style="display:none">➕ Add Admin</button>
+        </div>
       </h2>
       <div id="adminList" style="display:grid;gap:10px">Loading...</div>
     </div>
@@ -417,6 +420,9 @@ form.grid{display:grid;gap:12px}
 
   <!-- SETTINGS -->
   <div class="tab-pane" id="tab-settings" style="display:none">
+    <div id="mustChangeBanner" class="card" style="display:none;border-color:var(--yel);background:#ffd23f18;color:var(--yel);font-weight:600">
+      ⚠️ Security requirement: You must set a new password (at least 12 characters) before accessing the Admin Portal.
+    </div>
     <div class="g2">
       <div class="card">
         <h2>👤 Edit My Profile</h2>
@@ -431,8 +437,8 @@ form.grid{display:grid;gap:12px}
         <h2>🔒 Change Password</h2>
         <form id="pwdF" class="grid">
           <label>Current Password <input type="password" id="curP" autocomplete="current-password" required></label>
-          <label>New Password <input type="password" id="newP" minlength="6" autocomplete="new-password" required></label>
-          <label>Confirm New Password <input type="password" id="confP" minlength="6" autocomplete="new-password" required></label>
+          <label>New Password (12+ chars) <input type="password" id="newP" minlength="12" autocomplete="new-password" required></label>
+          <label>Confirm New Password (12+ chars) <input type="password" id="confP" minlength="12" autocomplete="new-password" required></label>
           <div class="errmsg" id="pwdMsg"></div>
           <button class="btn cyan" type="submit">Update Password</button>
         </form>
@@ -475,12 +481,29 @@ async function api(path, method = "GET", body = null) {
     if (r.status === 401 || r.status === 403) {
       const d = await r.json();
       if (r.status === 401) { logout(); return null; }
+      if (d.must_change_password && ME) {
+        ME.must_change_password = true;
+        localStorage.setItem("astro_admin_user", JSON.stringify(ME));
+        enforcePasswordChangeUI();
+      }
       toast(d.error || "Forbidden", true);
       if (d.error && /suspended/i.test(d.error)) logout();
       return null;
     }
     return await r.json();
   } catch { toast("Network error", true); return null; }
+}
+
+function enforcePasswordChangeUI() {
+  const mustChange = Boolean(ME?.must_change_password);
+  const banner = $("#mustChangeBanner");
+  if (banner) banner.style.display = mustChange ? "block" : "none";
+  if (mustChange) {
+    stopPolling();
+    $$(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === "tab-settings"));
+    $$(".tab-pane").forEach(p => p.style.display = p.id === "tab-settings" ? "block" : "none");
+    setTimeout(() => $("#curP")?.focus(), 50);
+  }
 }
 
 // ── AUTH ──────────────────────────────────────────────────────────────────
@@ -496,8 +519,14 @@ function checkAuth() {
     // Show owner-only controls
     const isOwner = ME.role === "Owner";
     if ($("#btnAddAdmin")) $("#btnAddAdmin").style.display = isOwner ? "flex" : "none";
-    initDashboard();
-    startPolling();
+    if ($("#btnForceLogoutAll")) $("#btnForceLogoutAll").style.display = isOwner ? "flex" : "none";
+    if (ME.must_change_password) {
+      enforcePasswordChangeUI();
+    } else {
+      enforcePasswordChangeUI();
+      initDashboard();
+      startPolling();
+    }
   } else {
     stopPolling();
     $("#login-modal").style.display = "grid";
@@ -537,6 +566,11 @@ $("#btnLogout").addEventListener("click", logout);
 
 // ── TABS ─────────────────────────────────────────────────────────────────
 $$(".tab-btn").forEach(btn => btn.addEventListener("click", () => {
+  if (ME?.must_change_password && btn.dataset.tab !== "tab-settings") {
+    toast("Please set a new password (12+ characters) first.", true);
+    enforcePasswordChangeUI();
+    return;
+  }
   $$(".tab-btn").forEach(b => b.classList.remove("active"));
   $$(".tab-pane").forEach(p => p.style.display = "none");
   btn.classList.add("active");
@@ -1029,6 +1063,7 @@ async function loadAdmins() {
       </div>
       <div class="admin-actions">
         ${isOwner && !isSelf ? `
+          <button class="btn cyan sm" data-adm-act="reset-password">🔑 Reset Pwd</button>
           ${a.blocked
             ? `<button class="btn grn sm" data-adm-act="unblock">✅ Unblock</button>`
             : `<button class="btn yel sm" data-adm-act="block">🔒 Block</button>`}
@@ -1046,10 +1081,26 @@ async function loadAdmins() {
 }
 
 window.adminAction = async (action, id, name) => {
+  if (action === "reset-password") {
+    const pwd = prompt(`Enter a new temporary password (12+ characters) for ${name}:`);
+    if (!pwd) return;
+    if (pwd.length < 12) { toast("Password must be at least 12 characters", true); return; }
+    const r = await api("/admin/reset-password", "POST", { id, new_password: pwd });
+    if (r?.ok) { toast(`Password reset for ${name} (must change on next login)`); loadAdmins(); }
+    else toast(r?.error || "Failed", true);
+    return;
+  }
   const labels = { block:"Block", unblock:"Unblock", delete:"Delete", "force-logout":"Force Logout" };
   if (!confirm(`Are you sure you want to ${labels[action]} ${name}?`)) return;
   const r = await api(`/admin/${action}`,"POST",{id});
   if (r?.ok) { toast(`${name} ${labels[action]}ed`); loadAdmins(); }
+  else toast(r?.error || "Failed", true);
+};
+
+window.forceLogoutAll = async () => {
+  if (!confirm("Force-logout all other admin accounts immediately?")) return;
+  const r = await api("/admin/force-logout", "POST", { all: true });
+  if (r?.ok) { toast("All other admin sessions invalidated!"); loadAdmins(); }
   else toast(r?.error || "Failed", true);
 };
 
@@ -1087,11 +1138,17 @@ $("#profF").addEventListener("submit", async e => {
 
 $("#pwdF").addEventListener("submit", async e => {
   e.preventDefault();
+  if($("#newP").value.length < 12){ $("#pwdMsg").textContent = "New password must be at least 12 characters"; return; }
   if($("#newP").value !== $("#confP").value){ $("#pwdMsg").textContent = "Passwords do not match"; return; }
   const r = await api("/change-password","POST",{current_password:$("#curP").value,new_password:$("#newP").value});
   if(r?.ok){
     if (r.token) { TOKEN = r.token; localStorage.setItem("astro_admin_token", TOKEN); }
+    if (ME) {
+      ME.must_change_password = false;
+      localStorage.setItem("astro_admin_user", JSON.stringify(ME));
+    }
     toast("Password updated!"); $("#pwdF").reset(); $("#pwdMsg").textContent = "";
+    checkAuth();
   }
   else { $("#pwdMsg").textContent = r?.error||"Failed"; }
 });

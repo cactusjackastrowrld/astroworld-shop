@@ -5,11 +5,40 @@ const siteOrigin = Deno.env.get("SITE_ORIGIN") || "https://cactusjackastrowrld.g
 const botToken = Deno.env.get("SHOP_BOT_TOKEN") ?? "";
 const ownerId = Deno.env.get("SHOP_OWNER_ID") ?? "";
 const webhookSecret = Deno.env.get("SHOP_WEBHOOK_SECRET") ?? "";
-const SALT = "astro-world-salt-2026";
+const LEGACY_SALT = "astro-world-salt-2026";
+const PBKDF2_ITERATIONS = 600_000;
+const MIN_PASSWORD_LEN = 12;
+const LEAKED_SEED_HASH = "db812db08007152375fbf084d0664856b2633f7d0594fa2599a31edae8dbf393";
+
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+function hexToBytes(hex: string): Uint8Array {
+  const clean = hex.length % 2 === 0 ? hex : "0" + hex;
+  const out = new Uint8Array(clean.length / 2);
+  for (let i = 0; i < out.length; i++) {
+    out[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16) || 0;
+  }
+  return out;
+}
+
+// Constant-time string comparison (never short-circuits on content)
+function constantTimeEqual(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const ba = enc.encode(a);
+  const bb = enc.encode(b);
+  const len = Math.max(ba.length, bb.length);
+  let diff = ba.length ^ bb.length;
+  for (let i = 0; i < len; i++) {
+    diff |= (ba[i] ?? 0) ^ (bb[i] ?? 0);
+  }
+  return diff === 0;
+}
 
 async function hashIp(ip: string): Promise<string> {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(ip));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+  return bytesToHex(new Uint8Array(buf));
 }
 
 function getClientIp(req: Request): string {
@@ -41,9 +70,66 @@ function getCorsHeaders(origin: string | null) {
   };
 }
 
-async function hashPassword(p: string) {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(SALT + p));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+async function pbkdf2Hex(password: string, saltBytes: Uint8Array, iterations = PBKDF2_ITERATIONS): Promise<string> {
+  const baseKey = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"]
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", hash: "SHA-256", salt: saltBytes, iterations },
+    baseKey,
+    256
+  );
+  return bytesToHex(new Uint8Array(bits));
+}
+
+async function hashPassword(password: string): Promise<string> {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const derived = await pbkdf2Hex(password, salt, PBKDF2_ITERATIONS);
+  return `pbkdf2$${PBKDF2_ITERATIONS}$${bytesToHex(salt)}$${derived}`;
+}
+
+async function hashLegacySha256(password: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(LEGACY_SALT + password));
+  return bytesToHex(new Uint8Array(buf));
+}
+
+async function verifyPassword(
+  password: string,
+  storedHash: string | null | undefined
+): Promise<{ valid: boolean; needsRehash: boolean }> {
+  const dummySalt = new Uint8Array(16);
+  const legacyCandidate = await hashLegacySha256(password);
+  const isSubmittedSeedPassword = constantTimeEqual(legacyCandidate, LEAKED_SEED_HASH);
+
+  if (!storedHash) {
+    await pbkdf2Hex(password, dummySalt, PBKDF2_ITERATIONS);
+    return { valid: false, needsRehash: false };
+  }
+
+  // Refuse any account whose stored hash equals the leaked seed hash
+  if (constantTimeEqual(storedHash, LEAKED_SEED_HASH)) {
+    await pbkdf2Hex(password, dummySalt, PBKDF2_ITERATIONS);
+    return { valid: false, needsRehash: false };
+  }
+
+  if (storedHash.startsWith("pbkdf2$")) {
+    const parts = storedHash.split("$");
+    const iter = parseInt(parts[1] || "", 10) || PBKDF2_ITERATIONS;
+    const saltHex = parts[2] || "";
+    const expectedHex = parts[3] || "";
+    const derivedHex = await pbkdf2Hex(password, hexToBytes(saltHex), iter);
+    const match = constantTimeEqual(derivedHex, expectedHex) && !isSubmittedSeedPassword;
+    return { valid: match, needsRehash: match && iter < PBKDF2_ITERATIONS };
+  }
+
+  // Legacy non-seed SHA-256 hash: run dummy PBKDF2 for uniform timing, upgrade on match
+  await pbkdf2Hex(password, dummySalt, PBKDF2_ITERATIONS);
+  const match = constantTimeEqual(legacyCandidate, storedHash) && !isSubmittedSeedPassword;
+  return { valid: match, needsRehash: match };
 }
 
 async function createToken(payload: { id: string; username: string; role: string; iat: number }) {
@@ -202,34 +288,53 @@ serve(async (req) => {
 
   // Public login
   if (path === "/login" && req.method === "POST") {
-    const ipHash = await hashIp("login:" + getClientIp(req));
-    if (await isRateLimited(db, ipHash, 10, 15)) {
+    const body = await req.json().catch(() => ({}));
+    const username = (body.username || "").trim().toLowerCase();
+    const password = String(body.password || "");
+    if (!username || !password) return json({ ok: false, error: "Username and password required" }, 400);
+
+    const ipHash = await hashIp("login:ip:" + getClientIp(req));
+    const userHash = await hashIp("login:user:" + username);
+    const [ipLimited, userLimited] = await Promise.all([
+      isRateLimited(db, ipHash, 10, 15),
+      isRateLimited(db, userHash, 5, 15),
+    ]);
+    if (ipLimited || userLimited) {
       return json({ ok: false, error: "Too many failed login attempts. Try again in 15 minutes." }, 429);
     }
 
-    const body = await req.json().catch(() => ({}));
-    const username = (body.username || "").trim().toLowerCase();
-    const password = body.password || "";
-    if (!username || !password) return json({ ok: false, error: "Username and password required" }, 400);
-
-    const hash = await hashPassword(password);
     const { data: admin } = await db.from("admins")
-      .select("id, username, password_hash, display_name, role, blocked")
+      .select("id, username, password_hash, display_name, role, blocked, must_change_password")
       .eq("username", username).maybeSingle();
 
-    if (!admin || admin.password_hash !== hash) {
-      await db.from("rate_limits").insert({ ip_hash: ipHash });
+    const { valid, needsRehash } = await verifyPassword(password, admin?.password_hash);
+
+    if (!admin || !valid) {
+      await db.from("rate_limits").insert([{ ip_hash: ipHash }, { ip_hash: userHash }]);
       return json({ ok: false, error: "Invalid username or password" }, 401);
     }
     if (admin.blocked) return json({ ok: false, error: "This account has been suspended. Contact the shop owner." }, 403);
 
+    const updates: Record<string, unknown> = { last_seen: new Date().toISOString() };
+    if (needsRehash) {
+      updates.password_hash = await hashPassword(password);
+    }
+    await db.from("admins").update(updates).eq("id", admin.id);
+
     const iat = Math.floor(Date.now() / 1000);
     const token = await createToken({ id: admin.id, username: admin.username, role: admin.role, iat });
 
-    // Update last_seen
-    await db.from("admins").update({ last_seen: new Date().toISOString() }).eq("id", admin.id);
-
-    return json({ ok: true, token, admin: { id: admin.id, username: admin.username, display_name: admin.display_name, role: admin.role } });
+    return json({
+      ok: true,
+      token,
+      admin: {
+        id: admin.id,
+        username: admin.username,
+        display_name: admin.display_name,
+        role: admin.role,
+        must_change_password: Boolean(admin.must_change_password),
+      },
+    });
   }
 
   // Auth check
@@ -240,7 +345,7 @@ serve(async (req) => {
 
   // Check if account is blocked or token was issued before invalidation
   const { data: selfAdmin } = await db.from("admins")
-    .select("id, display_name, blocked, session_invalidated_at, last_seen")
+    .select("id, display_name, blocked, session_invalidated_at, last_seen, must_change_password")
     .eq("id", session.id).maybeSingle();
 
   if (!selfAdmin || selfAdmin.blocked) return json({ ok: false, error: "Account suspended" }, 403);
@@ -249,6 +354,13 @@ serve(async (req) => {
     if (session.iat && session.iat < invalidatedAt) {
       return json({ ok: false, error: "Session expired. Please log in again." }, 401);
     }
+  }
+  if (selfAdmin.must_change_password && path !== "/change-password") {
+    return json({
+      ok: false,
+      must_change_password: true,
+      error: `You must set a new password (at least ${MIN_PASSWORD_LEN} characters) before continuing.`,
+    }, 403);
   }
 
   // Update last_seen heartbeat (at most once a minute, in the background)
@@ -495,27 +607,47 @@ serve(async (req) => {
     // ── ADMINS (read + profile self-edit) ────────────────────────────────────
     if (path === "/admins" && req.method === "GET") {
       const { data } = await db.from("admins")
-        .select("id, username, display_name, role, blocked, last_seen, created_at")
+        .select("id, username, display_name, role, blocked, must_change_password, last_seen, created_at")
         .order("created_at", { ascending: true });
       return json({ ok: true, data: data || [] });
     }
 
     if (path === "/change-password" && req.method === "POST") {
       const { current_password, new_password } = await req.json();
-      if (!current_password || !new_password || new_password.length < 6)
-        return json({ ok: false, error: "New password must be at least 6 characters" }, 400);
-      const curHash = await hashPassword(current_password);
-      const { data: admin } = await db.from("admins").select("password_hash, username, role").eq("id", session.id).single();
-      if (!admin || admin.password_hash !== curHash) return json({ ok: false, error: "Current password incorrect" }, 400);
+      const curPwd = String(current_password || "");
+      const nextPwd = String(new_password || "");
+      if (!curPwd || !nextPwd || nextPwd.length < MIN_PASSWORD_LEN) {
+        return json({ ok: false, error: `New password must be at least ${MIN_PASSWORD_LEN} characters` }, 400);
+      }
+      if (constantTimeEqual(await hashLegacySha256(nextPwd), LEAKED_SEED_HASH)) {
+        return json({ ok: false, error: "Cannot use the old default password. Choose a unique password." }, 400);
+      }
+      if (constantTimeEqual(curPwd, nextPwd)) {
+        return json({ ok: false, error: "New password must be different from your current password." }, 400);
+      }
+      const { data: admin } = await db.from("admins").select("password_hash, username, display_name, role").eq("id", session.id).single();
+      const { valid } = await verifyPassword(curPwd, admin?.password_hash);
+      if (!admin || !valid) return json({ ok: false, error: "Current password incorrect" }, 400);
       const nowIso = new Date().toISOString();
       const { error } = await db.from("admins").update({
-        password_hash: await hashPassword(new_password),
+        password_hash: await hashPassword(nextPwd),
+        must_change_password: false,
         session_invalidated_at: nowIso,
       }).eq("id", session.id);
       if (error) throw error;
       const iat = Math.floor(new Date(nowIso).getTime() / 1000) + 1;
       const newToken = await createToken({ id: session.id, username: admin.username, role: admin.role, iat });
-      return json({ ok: true, token: newToken });
+      return json({
+        ok: true,
+        token: newToken,
+        admin: {
+          id: session.id,
+          username: admin.username,
+          display_name: admin.display_name,
+          role: admin.role,
+          must_change_password: false,
+        },
+      });
     }
 
     if (path === "/update-profile" && req.method === "POST") {
@@ -527,7 +659,7 @@ serve(async (req) => {
       const updates: any = { username: newU };
       if (display_name) updates.display_name = display_name.trim();
       const { data: updated, error } = await db.from("admins").update(updates).eq("id", session.id)
-        .select("id, username, display_name, role").single();
+        .select("id, username, display_name, role, must_change_password").single();
       if (error) throw error;
       const newToken = await createToken({ id: updated.id, username: updated.username, role: updated.role, iat: Math.floor(Date.now() / 1000) });
       return json({ ok: true, admin: updated, token: newToken });
@@ -535,22 +667,49 @@ serve(async (req) => {
 
     // ── OWNER-ONLY: ADMIN MANAGEMENT ─────────────────────────────────────────
     if (session.role !== "Owner") {
-      if (["/admin/add", "/admin/delete", "/admin/block", "/admin/unblock", "/admin/force-logout"].includes(path))
+      if (["/admin/add", "/admin/delete", "/admin/block", "/admin/unblock", "/admin/force-logout", "/admin/reset-password"].includes(path))
         return json({ ok: false, error: "Only the shop Owner can manage admin accounts" }, 403);
     }
 
     if (path === "/admin/add" && req.method === "POST") {
       const { username, display_name, role, password } = await req.json();
       const u = (username || "").trim().toLowerCase();
-      if (!u || u.length < 3 || !password || password.length < 6)
-        return json({ ok: false, error: "Username (3+ chars) and password (6+ chars) required" }, 400);
-      const hash = await hashPassword(password);
+      const pwd = String(password || "");
+      if (!u || u.length < 3 || !pwd || pwd.length < MIN_PASSWORD_LEN) {
+        return json({ ok: false, error: `Username (3+ chars) and password (${MIN_PASSWORD_LEN}+ chars) required` }, 400);
+      }
+      if (constantTimeEqual(await hashLegacySha256(pwd), LEAKED_SEED_HASH)) {
+        return json({ ok: false, error: "Cannot use the old default password." }, 400);
+      }
+      const hash = await hashPassword(pwd);
       const { data, error } = await db.from("admins").insert({
-        username: u, display_name: (display_name || u).trim(),
-        role: role || "Staff", password_hash: hash,
-      }).select("id, username, display_name, role").single();
+        username: u,
+        display_name: (display_name || u).trim(),
+        role: role || "Staff",
+        password_hash: hash,
+        must_change_password: true,
+      }).select("id, username, display_name, role, must_change_password").single();
       if (error) return json({ ok: false, error: error.message.includes("unique") ? "Username already exists" : error.message }, 400);
       return json({ ok: true, data });
+    }
+
+    if (path === "/admin/reset-password" && req.method === "POST") {
+      const { id, new_password } = await req.json();
+      const nextPwd = String(new_password || "");
+      if (!id || !nextPwd || nextPwd.length < MIN_PASSWORD_LEN) {
+        return json({ ok: false, error: `Password must be at least ${MIN_PASSWORD_LEN} characters` }, 400);
+      }
+      if (constantTimeEqual(await hashLegacySha256(nextPwd), LEAKED_SEED_HASH)) {
+        return json({ ok: false, error: "Cannot use the old default password." }, 400);
+      }
+      const nowIso = new Date().toISOString();
+      const { error } = await db.from("admins").update({
+        password_hash: await hashPassword(nextPwd),
+        must_change_password: id !== session.id,
+        session_invalidated_at: nowIso,
+      }).eq("id", id);
+      if (error) throw error;
+      return json({ ok: true });
     }
 
     if (path === "/admin/delete" && req.method === "POST") {
@@ -575,9 +734,14 @@ serve(async (req) => {
     }
 
     if (path === "/admin/force-logout" && req.method === "POST") {
-      const { id } = await req.json();
+      const { id, all } = await req.json();
+      const nowIso = new Date().toISOString();
+      if (all) {
+        await db.from("admins").update({ session_invalidated_at: nowIso }).neq("id", session.id);
+        return json({ ok: true });
+      }
       if (id === session.id) return json({ ok: false, error: "Cannot force-logout yourself" }, 400);
-      await db.from("admins").update({ session_invalidated_at: new Date().toISOString() }).eq("id", id);
+      await db.from("admins").update({ session_invalidated_at: nowIso }).eq("id", id);
       return json({ ok: true });
     }
 
