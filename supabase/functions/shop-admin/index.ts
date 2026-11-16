@@ -4,7 +4,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 const siteOrigin = Deno.env.get("SITE_ORIGIN") || "https://cactusjackastrowrld.github.io";
 const botToken = Deno.env.get("SHOP_BOT_TOKEN") ?? "";
 const ownerId = Deno.env.get("SHOP_OWNER_ID") ?? "";
+const adminJwtSecret = Deno.env.get("ADMIN_JWT_SECRET") ?? "";
 const webhookSecret = Deno.env.get("SHOP_WEBHOOK_SECRET") ?? "";
+const TOKEN_TTL_SECONDS = 12 * 60 * 60; // 12 hours
 const LEGACY_SALT = "astro-world-salt-2026";
 const PBKDF2_ITERATIONS = 600_000;
 const MIN_PASSWORD_LEN = 12;
@@ -133,12 +135,14 @@ async function verifyPassword(
 }
 
 async function createToken(payload: { id: string; username: string; role: string; iat: number }) {
-  if (!webhookSecret) throw new Error("Server misconfigured: missing signing secret");
+  if (!adminJwtSecret || adminJwtSecret.length < 64) {
+    throw new Error("Server misconfigured: missing or short ADMIN_JWT_SECRET");
+  }
   const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }));
-  const exp = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60;
+  const exp = Math.floor(Date.now() / 1000) + TOKEN_TTL_SECONDS;
   const body = btoa(JSON.stringify({ ...payload, exp }));
   const unsigned = `${header}.${body}`;
-  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(webhookSecret),
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(adminJwtSecret),
     { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(unsigned));
   const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sig)))
@@ -148,11 +152,11 @@ async function createToken(payload: { id: string; username: string; role: string
 
 async function verifyToken(token: string): Promise<any | null> {
   try {
-    if (!webhookSecret) return null;
+    if (!adminJwtSecret || adminJwtSecret.length < 64) return null;
     const parts = token.split(".");
     if (parts.length !== 3) return null;
     const unsigned = `${parts[0]}.${parts[1]}`;
-    const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(webhookSecret),
+    const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(adminJwtSecret),
       { name: "HMAC", hash: "SHA-256" }, false, ["verify"]);
     const sigStr = atob(parts[2].replace(/-/g, "+").replace(/_/g, "/"));
     const sigBytes = new Uint8Array(sigStr.split("").map(c => c.charCodeAt(0)));
@@ -340,6 +344,32 @@ serve(async (req) => {
   // Auth check
   const authHeader = req.headers.get("authorization") || req.headers.get("x-admin-token") || "";
   const rawToken = authHeader.replace(/^Bearer\s+/i, "").trim();
+
+  // Internal/Owner endpoint to sync Telegram webhook with rotated SHOP_WEBHOOK_SECRET
+  if (path === "/bot/sync-webhook" && req.method === "POST") {
+    const isAdminSecret = Boolean(adminJwtSecret && rawToken && constantTimeEqual(rawToken, adminJwtSecret));
+    const ownerSession = !isAdminSecret ? await verifyToken(rawToken) : null;
+    if (!isAdminSecret && ownerSession?.role !== "Owner") {
+      return json({ ok: false, error: "Forbidden" }, 403);
+    }
+    if (!botToken || !webhookSecret) {
+      return json({ ok: false, error: "Missing SHOP_BOT_TOKEN or SHOP_WEBHOOK_SECRET" }, 500);
+    }
+    const targetUrl = `${supabaseUrl}/functions/v1/shop-bot`;
+    const setRes = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: targetUrl, secret_token: webhookSecret }),
+    }).then(r => r.json());
+    const infoRes = await fetch(`https://api.telegram.org/bot${botToken}/getWebhookInfo`).then(r => r.json());
+    return json({
+      ok: Boolean(setRes?.ok),
+      description: setRes?.description || "",
+      webhook_url: infoRes?.result?.url || "",
+      pending_update_count: infoRes?.result?.pending_update_count ?? 0,
+    });
+  }
+
   const session = await verifyToken(rawToken);
   if (!session) return json({ ok: false, error: "Unauthorized" }, 401);
 
