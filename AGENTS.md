@@ -3,7 +3,7 @@
 This file is automatically read by Antigravity on any machine (Windows or Linux Mint) so the AI assistant immediately knows the full project setup, architecture, and rules without needing prior chat history.
 
 ## 1. Project Identity & Live URLs
-- **Business:** Astro World Cyber (Kenya) — Phone: `+254 742454100` | Email: `astroprint27@gmail.com`
+- **Business:** Astro World Cyber (Kenya) — Phone: `+254 751 116 241` | Email: `astroprint27@gmail.com`
 - **GitHub Repo:** `https://github.com/cactusjackastrowrld/astroworld-shop`
 - **Live Customer Site:** `https://cactusjackastrowrld.github.io/astroworld-shop/`
 - **Live Admin Portal:** `https://cactusjackastrowrld.github.io/astroworld-shop/admin.html`
