@@ -10,8 +10,8 @@ This file is automatically read by Antigravity on any machine (Windows or Linux 
 - **Supabase Project Ref:** `iqdzokybhggiilzscnxv` (`https://iqdzokybhggiilzscnxv.supabase.co`)
 
 ## 2. File Structure
-- `docs/index.html` & `index.html` — Public website with movie catalog, service booking, movie requests, customer reviews, and live customer chat widget (with Web-Audio notification tunes). **Always keep root `index.html` and `docs/index.html` in sync.**
-- `docs/admin.html` & `admin.html` — Admin dashboard (Overview, Bookings, Requests, Reviews, Catalog, Bot & Post, Live Chat, Team, My Account). **Always keep root `admin.html` and `docs/admin.html` in sync.**
+- `docs/index.html` — Public website with movie catalog, service booking, movie requests, customer reviews, and live customer chat widget (with Web-Audio notification tunes). Served by GitHub Pages from `main` `/docs`.
+- `docs/admin.html` — Admin dashboard (Overview, Bookings, Requests, Reviews, Catalog, Bot & Post, Live Chat, Team, My Account). Served by GitHub Pages from `main` `/docs` (`noindex, nofollow`).
 - `supabase/functions/shop-feed/index.ts` — Public GET endpoint for active catalog items & approved reviews.
 - `supabase/functions/shop-intake/index.ts` — Public POST endpoint for bookings, movie requests, and reviews (+ Telegram alerts).
 - `supabase/functions/shop-bot/index.ts` — Telegram webhook bot for owner management.
@@ -21,7 +21,7 @@ This file is automatically read by Antigravity on any machine (Windows or Linux 
 ## 3. Strict Project Rules & Guidelines
 1. **Never expose secrets:** Never print or hardcode `SHOP_BOT_TOKEN`, `SHOP_WEBHOOK_SECRET`, or `SUPABASE_SERVICE_ROLE_KEY` in code or chat.
 2. **Design & Branding:** Keep the dark space neon aesthetic (`--bg:#05030f`, `--pink:#ff3d9a`, `--cyan:#2ee6ff`, `--yel:#ffd23f`, `--grn:#39ff88`, `--pur:#8b5cff`). Never add "Aether Ghost Crop" anywhere.
-3. **Syncing `docs/` and root HTML:** GitHub Pages serves from the `main` branch `/docs` folder. Whenever editing `docs/index.html` or `docs/admin.html`, always copy them to the root `index.html` and `admin.html` before committing.
+3. **Single Source in `docs/`:** GitHub Pages serves from the `main` branch `/docs` folder (`docs/index.html` and `docs/admin.html`). Do not create duplicate HTML files in the repository root.
 4. **Deploying Edge Functions (No Docker required):**
    ```bash
    npx supabase functions deploy shop-admin --no-verify-jwt
