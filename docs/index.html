@@ -234,6 +234,24 @@ SERVICES.forEach((s, i) => {
   $("#bkS").appendChild(el("option", "", s[0]));
 });
 const SUBS = { kids: "Kids animation", adult: "Adult animation", series: "Animated series" };
+function normItem(i) {
+  const c = String(i.cat || "").trim().toLowerCase();
+  if (["series", "tv", "show", "shows", "tv series", "tv-series"].includes(c)) i.cat = "series";
+  else if (["movies", "movie", "film", "films"].includes(c)) i.cat = "movies";
+  else if (["animation", "animations", "animated", "cartoon", "cartoons"].includes(c)) i.cat = "animation";
+  else if (["anime", "animes"].includes(c)) i.cat = "anime";
+  else i.cat = "movies";
+  if (i.cat === "animation") {
+    const s = String(i.sub || "").trim().toLowerCase();
+    if (["kids", "kid", "children", "child", "kids animation"].includes(s)) i.sub = "kids";
+    else if (["adult", "adults", "mature", "adult animation"].includes(s)) i.sub = "adult";
+    else if (["series", "tv", "show", "animated series"].includes(s)) i.sub = "series";
+    else i.sub = null;
+  } else {
+    i.sub = null;
+  }
+  return i;
+}
 let tim = null, G = "All";
 function card(i) {
   const c = el("article", "pc"), p = el("div", "poster");
@@ -270,6 +288,7 @@ function row(title, items, auto) {
 }
 function render() {
   clearInterval(tim);
+  CATALOG.forEach(normItem);
   const q = $("#q").value.trim().toLowerCase(), box = $("#cat"); box.replaceChildren();
   const list = CATALOG.filter(i => (G === "All" || i.g.includes(G)) && (!q || (i.t + " " + i.g.join(" ") + " " + i.d).toLowerCase().includes(q)));
   let shown = 0;
@@ -278,6 +297,7 @@ function render() {
   add("Series", list.filter(i => i.cat === "series"));
   add("Movies", list.filter(i => i.cat === "movies"));
   Object.keys(SUBS).forEach(k => add(SUBS[k], list.filter(i => i.cat === "animation" && i.sub === k)));
+  add("Animation", list.filter(i => i.cat === "animation" && !SUBS[i.sub]));
   add("Anime", list.filter(i => i.cat === "anime"));
   $("#none").hidden = shown > 0;
 }

@@ -17,6 +17,24 @@ function getCorsHeaders(_origin: string | null) {
   };
 }
 
+function normalizeCategoryAndSub(rawCat: unknown, rawSub: unknown): { cat: string; sub: string | null } {
+  const c = String(rawCat || "").trim().toLowerCase();
+  let cat = "movies";
+  if (["series", "tv", "show", "shows", "tv series", "tv-series"].includes(c)) cat = "series";
+  else if (["movies", "movie", "film", "films"].includes(c)) cat = "movies";
+  else if (["animation", "animations", "animated", "cartoon", "cartoons"].includes(c)) cat = "animation";
+  else if (["anime", "animes"].includes(c)) cat = "anime";
+
+  let sub: string | null = null;
+  if (cat === "animation") {
+    const s = String(rawSub || "").trim().toLowerCase();
+    if (["kids", "kid", "children", "child", "kids animation"].includes(s)) sub = "kids";
+    else if (["adult", "adults", "mature", "adult animation"].includes(s)) sub = "adult";
+    else if (["series", "tv", "show", "animated series"].includes(s)) sub = "series";
+  }
+  return { cat, sub };
+}
+
 serve(async (req) => {
   const origin = req.headers.get("origin");
 
@@ -60,12 +78,13 @@ serve(async (req) => {
       if (imageUrl && !imageUrl.startsWith("http://") && !imageUrl.startsWith("https://") && !imageUrl.startsWith("data:")) {
         imageUrl = `${supabaseUrl}/storage/v1/object/public/posters/${item.image_path}`;
       }
+      const { cat, sub } = normalizeCategoryAndSub(item.category, item.sub);
       return {
         id: item.id,
         t: item.title,
         s: item.subtitle || "",
-        cat: item.category,
-        sub: item.sub || null,
+        cat,
+        sub,
         g: Array.isArray(item.genres) ? item.genres : [],
         d: item.description || "",
         img: imageUrl,

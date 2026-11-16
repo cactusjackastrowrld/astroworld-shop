@@ -197,6 +197,25 @@ function escTg(s: string) {
   return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+// Normalize category and sub-category to canonical values
+function normalizeCategoryAndSub(rawCat: unknown, rawSub: unknown): { category: string | null; sub: string | null } {
+  const c = String(rawCat || "").trim().toLowerCase();
+  let category: string | null = null;
+  if (["series", "tv", "show", "shows", "tv series", "tv-series"].includes(c)) category = "series";
+  else if (["movies", "movie", "film", "films"].includes(c)) category = "movies";
+  else if (["animation", "animations", "animated", "cartoon", "cartoons"].includes(c)) category = "animation";
+  else if (["anime", "animes"].includes(c)) category = "anime";
+
+  let sub: string | null = null;
+  if (category === "animation") {
+    const s = String(rawSub || "").trim().toLowerCase();
+    if (["kids", "kid", "children", "child", "kids animation"].includes(s)) sub = "kids";
+    else if (["adult", "adults", "mature", "adult animation"].includes(s)) sub = "adult";
+    else if (["series", "tv", "show", "animated series"].includes(s)) sub = "series";
+  }
+  return { category, sub };
+}
+
 // Only accept real timestamps for "since" filters (keep full microsecond precision)
 function safeIso(v: string | null) {
   if (!v) return new Date(0).toISOString();
@@ -569,16 +588,25 @@ serve(async (req) => {
       }
       if (req.method === "POST") {
         const body = await req.json();
-        const { title, subtitle, category, sub, genres, description, image_url, trending, announce_telegram } = body;
-        if (!title || !category) return json({ ok: false, error: "Title and Category required" }, 400);
+        const { title, subtitle, category: rawCat, sub: rawSub, genres, description, image_url, trending, announce_telegram } = body;
+        const { category, sub } = normalizeCategoryAndSub(rawCat, rawSub);
+        if (!title || !String(title).trim() || !category) {
+          return json({ ok: false, error: "Title and valid Category (series, movies, animation, anime) required" }, 400);
+        }
+        if (category === "animation" && !sub) {
+          return json({ ok: false, error: "Please select an Animation sub-category (kids, adult, or series)" }, 400);
+        }
         const genresList = Array.isArray(genres) ? genres : (genres || "").split(",").map((g: string) => g.trim()).filter(Boolean);
         const { data, error } = await db.from("catalog").insert({
-          title: title.trim(), subtitle: (subtitle || "").trim() || null,
-          category: category.toLowerCase().trim(), sub: sub ? sub.toLowerCase().trim() : null,
+          title: String(title).trim(),
+          subtitle: (subtitle || "").trim() || null,
+          category,
+          sub,
           genres: genresList.length ? genresList : ["Action"],
           description: (description || "").trim(),
           image_path: (image_url || "").trim() || null,
-          trending: trending ? 1 : 0, active: true,
+          trending: Boolean(trending),
+          active: true,
         }).select().single();
         if (error) throw error;
         if (announce_telegram && botToken && ownerId) {
@@ -594,8 +622,8 @@ serve(async (req) => {
       if (req.method === "PATCH") {
         const { id, trending, active } = await req.json();
         const updates: any = {};
-        if (trending !== undefined) updates.trending = trending ? 1 : 0;
-        if (active !== undefined) updates.active = active;
+        if (trending !== undefined) updates.trending = Boolean(trending);
+        if (active !== undefined) updates.active = Boolean(active);
         const { error } = await db.from("catalog").update(updates).eq("id", id);
         if (error) throw error;
         return json({ ok: true });

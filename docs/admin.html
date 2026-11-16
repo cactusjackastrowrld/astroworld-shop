@@ -321,13 +321,25 @@ form.grid{display:grid;gap:12px}
           <div class="g2">
             <label>Category *
               <select id="cCat" required>
+                <option value="" selected disabled>— Choose Category —</option>
                 <option value="movies">Movie</option>
                 <option value="series">Series</option>
-                <option value="anime">Anime</option>
                 <option value="animation">Animation</option>
+                <option value="anime">Anime</option>
               </select>
             </label>
-            <label>Subtitle / Season <input type="text" id="cSub" placeholder="e.g. Season 2"></label>
+            <label id="cSubCatWrap" style="display:none">Animation Sub-Category *
+              <select id="cSubCat">
+                <option value="" selected disabled>— Choose Sub-Category —</option>
+                <option value="kids">Kids Animation</option>
+                <option value="adult">Adult Animation</option>
+                <option value="series">Animated Series</option>
+              </select>
+            </label>
+          </div>
+          <label>Subtitle / Season / Quality <input type="text" id="cSubtitle" placeholder="e.g. Season 2 Episode 1, HD, CAM"></label>
+          <div id="cSeriesHint" style="display:none;font-size:12px;color:var(--yel);background:#ffd23f18;border:1px solid #ffd23f55;padding:7px 10px;border-radius:8px;cursor:pointer">
+            💡 Subtitle mentions Season/Episode — tap here to set Category to <b>Series</b>
           </div>
           <label>Genres (comma separated) <input type="text" id="cGen" placeholder="Action, Thriller" value="Action"></label>
           <label>Poster Image URL * <input type="url" id="cImg" placeholder="https://..." required></label>
@@ -830,7 +842,8 @@ function renderCatalog(items) {
     }
     const body = mk("div", "cat-body");
     const titleEl = mk("div", "cat-title", c.title);
-    const subtEl = mk("div", "cat-subt", c.subtitle || (c.category || "").toUpperCase());
+    const catLabel = ((c.category || "").toUpperCase()) + (c.sub ? ` (${c.sub.toUpperCase()})` : "");
+    const subtEl = mk("div", "cat-subt", c.subtitle ? `${c.subtitle} · ${catLabel}` : catLabel);
     const genEl = mk("div", "cat-genres", (c.genres || []).join(", "));
     const acts = mk("div", "cat-actions");
     const btnTr = mk("button", "btn " + (c.trending ? "alt" : "cyan") + " sm", c.trending ? "Untrend" : "🔥 Trend");
@@ -850,16 +863,45 @@ $("#catQ").addEventListener("input", e => {
 });
 window.toggleTrend = async (id,trending) => { const r = await api("/catalog","PATCH",{id,trending}); if(r?.ok){toast("Updated");loadCatalog();} };
 
-// Publish form
+// Publish form: category/sub-category toggle + Season/Episode series suggestion
+function syncCatSubUI() {
+  const isAnim = $("#cCat").value === "animation";
+  $("#cSubCatWrap").style.display = isAnim ? "grid" : "none";
+  $("#cSubCat").required = isAnim;
+  if (!isAnim) $("#cSubCat").value = "";
+}
+function checkSeriesSuggestion() {
+  const txt = ($("#cTitle").value + " " + $("#cSubtitle").value).trim();
+  const looksLikeSeries = /\b(season|episode|ep\.?\s*\d|s\d{1,2}\s*e\d{1,2})\b/i.test(txt);
+  const cat = $("#cCat").value;
+  if (looksLikeSeries && !cat) {
+    $("#cCat").value = "series";
+    syncCatSubUI();
+  }
+  $("#cSeriesHint").style.display = (looksLikeSeries && $("#cCat").value === "movies") ? "block" : "none";
+}
+$("#cCat").addEventListener("change", () => { syncCatSubUI(); checkSeriesSuggestion(); });
+$("#cTitle").addEventListener("input", checkSeriesSuggestion);
+$("#cSubtitle").addEventListener("input", checkSeriesSuggestion);
+$("#cSeriesHint").addEventListener("click", () => {
+  $("#cCat").value = "series";
+  syncCatSubUI();
+  checkSeriesSuggestion();
+});
+
 $("#addCatF").addEventListener("submit", async e => {
   e.preventDefault();
+  const cat = $("#cCat").value;
+  const sub = cat === "animation" ? $("#cSubCat").value : null;
+  if (!cat) { toast("Please choose a Category", true); return; }
+  if (cat === "animation" && !sub) { toast("Please choose an Animation Sub-Category", true); return; }
   toast("Publishing...");
   const r = await api("/catalog","POST",{
-    title:$("#cTitle").value, subtitle:$("#cSub").value, category:$("#cCat").value,
+    title:$("#cTitle").value, subtitle:$("#cSubtitle").value, category:cat, sub,
     genres:$("#cGen").value, image_url:$("#cImg").value, description:$("#cDesc").value,
     trending:$("#cTrend").checked, announce_telegram:$("#cTg").checked
   });
-  if (r?.ok) { toast("Published!"); $("#addCatF").reset(); loadCatalog(); loadStats(); }
+  if (r?.ok) { toast("Published!"); $("#addCatF").reset(); syncCatSubUI(); checkSeriesSuggestion(); loadCatalog(); loadStats(); }
   else toast(r?.error || "Failed", true);
 });
 
