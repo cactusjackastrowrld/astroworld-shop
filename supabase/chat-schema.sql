@@ -9,6 +9,7 @@ create table if not exists public.conversations (
   session_id text unique not null,
   customer_name text not null default 'Customer',
   status text default 'open', -- open | closed
+  ip_hash text,
   created_at timestamp with time zone default now(),
   updated_at timestamp with time zone default now()
 );

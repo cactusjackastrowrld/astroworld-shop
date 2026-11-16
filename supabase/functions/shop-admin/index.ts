@@ -222,16 +222,31 @@ serve(async (req) => {
 
   // Customer starts a NEW chat session (every page load = fresh chat)
   if (path === "/chat/open" && req.method === "POST") {
-    const ipHash = await hashIp("chat:" + getClientIp(req));
-    if (await isRateLimited(db, ipHash, 10, 10)) {
+    const clientIp = getClientIp(req);
+    const openRateKey = await hashIp("chat:open:" + clientIp);
+    const ipHash = await hashIp("chat:ip:" + clientIp);
+
+    const [rateLimited, { count: openSessions }] = await Promise.all([
+      isRateLimited(db, openRateKey, 5, 10),
+      db.from("conversations")
+        .select("id", { count: "exact", head: true })
+        .eq("ip_hash", ipHash)
+        .eq("status", "open"),
+    ]);
+
+    if (rateLimited) {
       return json({ ok: false, error: "Too many chat sessions opened. Please wait a few minutes." }, 429);
     }
-    background(Promise.resolve(db.from("rate_limits").insert({ ip_hash: ipHash })));
+    if ((openSessions ?? 0) >= 3) {
+      return json({ ok: false, error: "Maximum number of open chat sessions (3) reached for your connection." }, 429);
+    }
+
+    background(Promise.resolve(db.from("rate_limits").insert({ ip_hash: openRateKey })));
     const body = await req.json().catch(() => ({}));
-    const name = String(body.name || "Customer").trim().slice(0, 40) || "Customer";
+    const name = String(body.name || "Customer").replace(/[\x00-\x1F\x7F]/g, "").trim().slice(0, 40) || "Customer";
     const sessionId = crypto.randomUUID();
     const { data: conv, error } = await db.from("conversations")
-      .insert({ session_id: sessionId, customer_name: name, status: "open" })
+      .insert({ session_id: sessionId, customer_name: name, status: "open", ip_hash: ipHash })
       .select("id").single();
     if (error || !conv) return json({ ok: false, error: "Could not start chat" }, 500);
     return json({ ok: true, session_id: sessionId });
@@ -240,23 +255,53 @@ serve(async (req) => {
   // Customer sends a message
   if (path === "/chat/message" && req.method === "POST") {
     const body = await req.json().catch(() => ({}));
-    const sessionId = body.session_id;
-    const text = String(body.text || "").trim().slice(0, 1000);
-    if (!sessionId || !text) return json({ ok: false, error: "Missing session_id or text" }, 400);
+    const sessionId = String(body.session_id || "").trim();
+    const rawText = String(body.text || "").replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "").trim();
+    if (!sessionId || !rawText) return json({ ok: false, error: "Missing session_id or text" }, 400);
+    if (rawText.length > 500) {
+      return json({ ok: false, error: "Message too long (maximum 500 characters)" }, 400);
+    }
+
+    const msgRateKey = await hashIp("chat:msg:" + getClientIp(req));
+    if (await isRateLimited(db, msgRateKey, 15, 1)) {
+      return json({ ok: false, error: "Sending messages too fast. Please wait a moment." }, 429);
+    }
 
     const { data: conv } = await db.from("conversations").select("id, customer_name, status").eq("session_id", sessionId).maybeSingle();
     if (!conv) return json({ ok: false, error: "Session not found" }, 404);
     if (conv.status === "closed") return json({ ok: false, closed: true, error: "This chat was closed" }, 409);
 
+    const { count: sessMsgCount } = await db.from("messages")
+      .select("id", { count: "exact", head: true })
+      .eq("conversation_id", conv.id)
+      .eq("sender", "customer");
+    if ((sessMsgCount ?? 0) >= 50) {
+      return json({ ok: false, error: "Maximum messages per chat session (50) reached." }, 429);
+    }
+
     const now = new Date().toISOString();
     const [{ data: msg }] = await Promise.all([
-      db.from("messages").insert({ conversation_id: conv.id, sender: "customer", sender_name: conv.customer_name, text })
+      db.from("messages").insert({ conversation_id: conv.id, sender: "customer", sender_name: conv.customer_name, text: rawText })
         .select("id, sender, sender_name, text, created_at").single(),
       db.from("conversations").update({ updated_at: now }).eq("id", conv.id),
+      db.from("rate_limits").insert({ ip_hash: msgRateKey }),
     ]);
 
-    // Telegram alert in the background — customer does not wait for it
-    background(tgMessage(`💬 <b>New Chat Message</b>\n<b>${escTg(conv.customer_name)}:</b> ${escTg(text)}\n\n<i>Reply in Admin Dashboard → Live Chat</i>`));
+    // Cap Telegram alerts: at most 1 per 2 mins per conversation, and 5 per 5 mins globally
+    const tgConvKey = await hashIp("chat:tg:conv:" + conv.id);
+    const tgGlobalKey = await hashIp("chat:tg:global");
+    const [convAlerted, globalAlerted] = await Promise.all([
+      isRateLimited(db, tgConvKey, 1, 2),
+      isRateLimited(db, tgGlobalKey, 5, 5),
+    ]);
+    if (!convAlerted && !globalAlerted) {
+      background(
+        Promise.all([
+          db.from("rate_limits").insert([{ ip_hash: tgConvKey }, { ip_hash: tgGlobalKey }]),
+          tgMessage(`💬 <b>New Chat Message</b>\n<b>${escTg(conv.customer_name)}:</b> ${escTg(rawText)}\n\n<i>Reply in Admin Dashboard → Live Chat</i>`),
+        ])
+      );
+    }
     return json({ ok: true, message: msg });
   }
 
