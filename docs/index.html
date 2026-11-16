@@ -522,6 +522,7 @@ setTimeout(() => { $("#ld").classList.add("out"); }, matchMedia("(prefers-reduce
     <p>👋 Hi there! Tell us your name and ask us anything — prices, services, movies…</p>
     <input id="cw-name-inp" placeholder="Your name" maxlength="40" autocomplete="off" required>
     <button class="cw-primary" id="cw-start-btn" type="submit">Start chat →</button>
+    <small style="font-size:11px;color:var(--mut);line-height:1.35">🔒 Privacy: Chat messages are used only to assist you and are automatically deleted after 90 days.</small>
   </form>
 
   <div id="cw-step2" style="display:none;flex-direction:column;flex:1;min-height:0">
@@ -530,6 +531,7 @@ setTimeout(() => { $("#ld").classList.add("out"); }, matchMedia("(prefers-reduce
       <textarea id="cw-inp" rows="1" maxlength="500" placeholder="Type a message…"></textarea>
       <button id="cw-send" type="button" aria-label="Send">➤</button>
     </div>
+    <div style="padding:0 12px 8px;font-size:10px;color:var(--mut);text-align:center">🔒 Messages are auto-deleted after 90 days.</div>
     <div id="cw-ended"><button class="cw-primary" id="cw-restart" type="button">Start a new chat</button></div>
   </div>
 </div>

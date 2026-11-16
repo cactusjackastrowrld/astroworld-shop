@@ -1,20 +1,16 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
-const siteOrigin = Deno.env.get("SITE_ORIGIN") || "https://cactusjackastrowrld.github.io";
+const ALLOWED_ORIGIN = "https://cactusjackastrowrld.github.io";
 
 function isAllowedOrigin(origin: string | null): boolean {
-  if (!origin || origin === "null") return true;
-  if (origin === siteOrigin) return true;
-  if (origin === "https://cactusjackastrowrld.github.io") return true;
-  if (origin === "https://cactusastrowrld.github.io") return true;
-  return false;
+  if (!origin) return true;
+  return origin === ALLOWED_ORIGIN;
 }
 
-function getCorsHeaders(origin: string | null) {
-  const allowed = isAllowedOrigin(origin) && origin && origin !== "null" ? origin : siteOrigin;
+function getCorsHeaders(_origin: string | null) {
   return {
-    "Access-Control-Allow-Origin": allowed,
+    "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
     "Access-Control-Allow-Methods": "GET, OPTIONS",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     "Vary": "Origin",

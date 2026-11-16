@@ -57,15 +57,16 @@ async function isRateLimited(db: any, ipHash: string, maxAttempts: number, windo
   return count !== null && count >= maxAttempts;
 }
 
+const ALLOWED_ORIGIN = "https://cactusjackastrowrld.github.io";
+
 function isAllowedOrigin(o: string | null) {
-  if (!o || o === "null") return true;
-  return [siteOrigin, "https://cactusjackastrowrld.github.io", "https://cactusastrowrld.github.io"].includes(o);
+  if (!o) return true;
+  return o === ALLOWED_ORIGIN;
 }
 
-function getCorsHeaders(origin: string | null) {
-  const allowed = isAllowedOrigin(origin) && origin && origin !== "null" ? origin : siteOrigin;
+function getCorsHeaders(_origin: string | null) {
   return {
-    "Access-Control-Allow-Origin": allowed,
+    "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
     "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-admin-token, x-session-id",
     "Vary": "Origin",
@@ -211,6 +212,10 @@ serve(async (req) => {
   const json = (data: any, status = 200) =>
     new Response(JSON.stringify(data), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
+  if (origin && !isAllowedOrigin(origin)) {
+    return json({ ok: false, error: "Forbidden: invalid origin" }, 403);
+  }
+
   const url = new URL(req.url);
   const path = url.pathname.replace(/^\/shop-admin/, "").replace(/\/$/, "");
 
@@ -218,10 +223,20 @@ serve(async (req) => {
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   const db = createClient(supabaseUrl, supabaseKey);
 
+  // Auto-delete chat conversations and messages older than 90 days
+  const purgeOldChats = async () => {
+    const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+    await Promise.all([
+      db.from("messages").delete().lt("created_at", cutoff),
+      db.from("conversations").delete().lt("updated_at", cutoff),
+    ]);
+  };
+
   // ─── PUBLIC: Chat widget endpoints (no auth) ───────────────────────────────
 
   // Customer starts a NEW chat session (every page load = fresh chat)
   if (path === "/chat/open" && req.method === "POST") {
+    background(purgeOldChats());
     const clientIp = getClientIp(req);
     const openRateKey = await hashIp("chat:open:" + clientIp);
     const ipHash = await hashIp("chat:ip:" + clientIp);
@@ -649,6 +664,7 @@ serve(async (req) => {
 
     // ── LIVE CHAT (ADMIN SIDE) ────────────────────────────────────────────────
     if (path === "/chat/conversations" && req.method === "GET") {
+      background(purgeOldChats());
       const { data: convs } = await db.from("conversations")
         .select("id, customer_name, status, created_at, updated_at")
         .order("updated_at", { ascending: false }).limit(100);
