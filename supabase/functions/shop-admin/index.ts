@@ -420,10 +420,11 @@ serve(async (req) => {
 
   // Check if account is blocked or token was issued before invalidation
   const { data: selfAdmin } = await db.from("admins")
-    .select("id, display_name, blocked, session_invalidated_at, last_seen, must_change_password")
+    .select("id, display_name, role, blocked, session_invalidated_at, last_seen, must_change_password")
     .eq("id", session.id).maybeSingle();
 
   if (!selfAdmin || selfAdmin.blocked) return json({ ok: false, error: "Account suspended" }, 403);
+  const isOwner = selfAdmin.role === "Owner";
   if (selfAdmin.session_invalidated_at) {
     const invalidatedAt = Math.floor(new Date(selfAdmin.session_invalidated_at).getTime() / 1000);
     if (session.iat && session.iat < invalidatedAt) {
@@ -483,6 +484,7 @@ serve(async (req) => {
         return json({ ok: true });
       }
       if (req.method === "DELETE") {
+        if (!isOwner) return json({ ok: false, error: "Only the shop Owner can delete records" }, 403);
         const { id } = await req.json();
         const { error } = await db.from("bookings").delete().eq("id", id);
         if (error) throw error;
@@ -504,6 +506,7 @@ serve(async (req) => {
         return json({ ok: true });
       }
       if (req.method === "DELETE") {
+        if (!isOwner) return json({ ok: false, error: "Only the shop Owner can delete records" }, 403);
         const { id } = await req.json();
         const { error } = await db.from("requests").delete().eq("id", id);
         if (error) throw error;
@@ -528,6 +531,7 @@ serve(async (req) => {
         return json({ ok: true });
       }
       if (req.method === "DELETE") {
+        if (!isOwner) return json({ ok: false, error: "Only the shop Owner can delete records" }, 403);
         const { id } = await req.json();
         const { error } = await db.from("reviews").delete().eq("id", id);
         if (error) throw error;
@@ -582,6 +586,7 @@ serve(async (req) => {
         return json({ ok: true });
       }
       if (req.method === "DELETE") {
+        if (!isOwner) return json({ ok: false, error: "Only the shop Owner can delete records" }, 403);
         const { id } = await req.json();
         const { error } = await db.from("catalog").delete().eq("id", id);
         if (error) throw error;
@@ -589,14 +594,56 @@ serve(async (req) => {
       }
     }
 
-    // ── BOT SEND ─────────────────────────────────────────────────────────────
+    // ── BOT SEND (OWNER ONLY) ────────────────────────────────────────────────
     if (path === "/bot/send" && req.method === "POST") {
-      const body = await req.json();
-      const message = (body.message || "").trim();
-      const photoUrl = (body.photo_url || "").trim();
+      if (!isOwner) return json({ ok: false, error: "Only the shop Owner can send Telegram bot messages" }, 403);
+      const body = await req.json().catch(() => ({}));
+      if (body.chat_id !== undefined) {
+        return json({ ok: false, error: "Custom chat_id is not allowed" }, 400);
+      }
+      const message = String(body.message || "").trim();
+      const photoUrl = String(body.photo_url || "").trim();
       if (!message && !photoUrl) return json({ ok: false, error: "Message or photo URL required" }, 400);
-      if (photoUrl) await tgPhoto(photoUrl, message);
-      else await tgMessage(message);
+      if (message.length > 1000) return json({ ok: false, error: "Message too long (max 1000 characters)" }, 400);
+
+      if (photoUrl) {
+        if (photoUrl.length > 500) return json({ ok: false, error: "Photo URL too long" }, 400);
+        let parsed: URL;
+        try {
+          parsed = new URL(photoUrl);
+        } catch {
+          return json({ ok: false, error: "Invalid photo URL" }, 400);
+        }
+        const host = parsed.hostname.toLowerCase();
+        if (
+          parsed.protocol !== "https:" ||
+          host === "localhost" ||
+          host.startsWith("127.") ||
+          host.startsWith("10.") ||
+          host.startsWith("192.168.") ||
+          host.startsWith("169.254.") ||
+          host.endsWith(".local")
+        ) {
+          return json({ ok: false, error: "Photo URL must be a valid public https:// URL" }, 400);
+        }
+        try {
+          const headRes = await fetch(parsed.toString(), { method: "HEAD" });
+          if (!headRes.ok) return json({ ok: false, error: "Photo URL is not reachable" }, 400);
+          const cType = (headRes.headers.get("content-type") || "").toLowerCase();
+          const cLen = parseInt(headRes.headers.get("content-length") || "0", 10);
+          if (cType && !cType.startsWith("image/")) {
+            return json({ ok: false, error: "Photo URL must point to an image" }, 400);
+          }
+          if (cLen > 5 * 1024 * 1024) {
+            return json({ ok: false, error: "Photo exceeds 5 MB size limit" }, 400);
+          }
+        } catch {
+          return json({ ok: false, error: "Could not verify photo URL" }, 400);
+        }
+        await tgPhoto(parsed.toString(), escTg(message));
+      } else {
+        await tgMessage(escTg(message));
+      }
       return json({ ok: true });
     }
 
@@ -667,8 +714,9 @@ serve(async (req) => {
       return json({ ok: true });
     }
 
-    // Delete one conversation, or all closed ones
+    // Delete one conversation, or all closed ones (Owner only)
     if (path === "/chat/delete" && req.method === "POST") {
+      if (!isOwner) return json({ ok: false, error: "Only the shop Owner can delete chats" }, 403);
       const { conversation_id, all_closed } = await req.json();
       if (all_closed) {
         const { data } = await db.from("conversations").delete().eq("status", "closed").select("id");
@@ -679,11 +727,15 @@ serve(async (req) => {
       return json({ ok: true, deleted: 1 });
     }
 
-    // ── ADMINS (read + profile self-edit) ────────────────────────────────────
+    // ── ADMINS (Owner sees all; Staff sees only own account) ────────────────
     if (path === "/admins" && req.method === "GET") {
-      const { data } = await db.from("admins")
+      let query = db.from("admins")
         .select("id, username, display_name, role, blocked, must_change_password, last_seen, created_at")
         .order("created_at", { ascending: true });
+      if (!isOwner) {
+        query = query.eq("id", session.id);
+      }
+      const { data } = await query;
       return json({ ok: true, data: data || [] });
     }
 
@@ -741,7 +793,7 @@ serve(async (req) => {
     }
 
     // ── OWNER-ONLY: ADMIN MANAGEMENT ─────────────────────────────────────────
-    if (session.role !== "Owner") {
+    if (!isOwner) {
       if (["/admin/add", "/admin/delete", "/admin/block", "/admin/unblock", "/admin/force-logout", "/admin/reset-password"].includes(path))
         return json({ ok: false, error: "Only the shop Owner can manage admin accounts" }, 403);
     }
