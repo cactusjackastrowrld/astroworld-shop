@@ -655,13 +655,68 @@ serve(async (req) => {
         return json({ ok: true, data });
       }
       if (req.method === "PATCH") {
-        const { id, trending, active } = await req.json();
-        const updates: any = {};
+        const body = await req.json();
+        const { id, title, subtitle, category: rawCat, sub: rawSub, genres, description, image_url, image_base64, trending, active } = body;
+        if (!id) return json({ ok: false, error: "Missing catalog item id" }, 400);
+        const updates: Record<string, unknown> = {};
+
+        if (title !== undefined) {
+          const cleanTitle = String(title || "").trim().slice(0, 200);
+          if (!cleanTitle) return json({ ok: false, error: "Title cannot be empty" }, 400);
+          updates.title = cleanTitle;
+        }
+        if (subtitle !== undefined) {
+          updates.subtitle = String(subtitle || "").trim().slice(0, 150) || null;
+        }
+        if (rawCat !== undefined) {
+          const { category, sub } = normalizeCategoryAndSub(rawCat, rawSub);
+          if (!category) {
+            return json({ ok: false, error: "Invalid category (must be movies, series, animation, or anime)" }, 400);
+          }
+          if (category === "animation" && !sub) {
+            return json({ ok: false, error: "Please select an Animation sub-category (kids, adult, or series)" }, 400);
+          }
+          updates.category = category;
+          updates.sub = sub;
+        }
+        if (genres !== undefined) {
+          const genresList = normalizeGenres(genres);
+          if (!genresList.length) {
+            return json({ ok: false, error: "Please select at least one valid genre" }, 400);
+          }
+          updates.genres = genresList;
+        }
+        if (description !== undefined) {
+          updates.description = String(description || "").trim().slice(0, 2000);
+        }
+        if (image_base64 && typeof image_base64 === "string" && image_base64.startsWith("data:image/")) {
+          const match = image_base64.match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,(.+)$/);
+          if (!match) return json({ ok: false, error: "Invalid image data" }, 400);
+          const mime = match[1];
+          const binStr = atob(match[2]);
+          if (binStr.length > 5 * 1024 * 1024) {
+            return json({ ok: false, error: "Poster image exceeds 5 MB limit" }, 400);
+          }
+          const bytes = new Uint8Array(binStr.length);
+          for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
+          const ext = mime.includes("png") ? "png" : mime.includes("webp") ? "webp" : "jpg";
+          const fileName = `${Date.now()}-edit-${String(updates.title || "poster").toLowerCase().replace(/[^a-z0-9]/g, "-").slice(0, 40)}.${ext}`;
+          const { error: upErr } = await db.storage.from("posters").upload(fileName, bytes, { contentType: mime, upsert: true });
+          if (upErr) return json({ ok: false, error: "Failed to upload poster image" }, 500);
+          updates.image_path = fileName;
+        } else if (image_url !== undefined && String(image_url || "").trim() !== "") {
+          const cleanUrl = String(image_url).trim();
+          if (!cleanUrl.startsWith("https://")) {
+            return json({ ok: false, error: "Poster URL must start with https://" }, 400);
+          }
+          updates.image_path = cleanUrl;
+        }
         if (trending !== undefined) updates.trending = Boolean(trending);
         if (active !== undefined) updates.active = Boolean(active);
-        const { error } = await db.from("catalog").update(updates).eq("id", id);
+
+        const { data, error } = await db.from("catalog").update(updates).eq("id", id).select().single();
         if (error) throw error;
-        return json({ ok: true });
+        return json({ ok: true, data });
       }
       if (req.method === "DELETE") {
         if (!isOwner) return json({ ok: false, error: "Only the shop Owner can delete records" }, 403);

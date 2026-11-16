@@ -194,6 +194,134 @@ serve(async (req) => {
       return new Response("OK", { status: 200 });
     }
 
+    // Catalog Edit menu (/list -> Edit)
+    if (data.startsWith("cat:edit:")) {
+      const catId = data.replace("cat:edit:", "");
+      const { data: item } = await supabase
+        .from("catalog")
+        .select("id, title, subtitle, category, sub, genres, description, trending, active")
+        .eq("id", catId)
+        .maybeSingle();
+      if (!item) {
+        await tgCall(botToken, "sendMessage", { chat_id: chatId, text: "⚠️ Title not found." });
+        return new Response("OK", { status: 200 });
+      }
+      const msgText = `✏️ <b>Editing: ${escapeHtml(item.title)}</b>\n` +
+        `• <b>Subtitle:</b> ${escapeHtml(item.subtitle || "None")}\n` +
+        `• <b>Category:</b> ${escapeHtml(item.category)}${item.sub ? " (" + escapeHtml(item.sub) + ")" : ""}\n` +
+        `• <b>Genres:</b> ${escapeHtml((item.genres || []).join(", "))}\n` +
+        `• <b>Description:</b> ${escapeHtml((item.description || "").slice(0, 120))}\n\n` +
+        `Choose a field to edit:`;
+      await tgCall(botToken, "editMessageText", {
+        chat_id: chatId,
+        message_id: messageId,
+        text: msgText,
+        parse_mode: "HTML",
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: "📝 Title", callback_data: `ce_f:title:${item.id}` },
+              { text: "📌 Subtitle", callback_data: `ce_f:subtitle:${item.id}` },
+            ],
+            [
+              { text: "📂 Category", callback_data: `ce_f:cat:${item.id}` },
+              { text: "🏷 Genres", callback_data: `ce_f:genres:${item.id}` },
+            ],
+            [
+              { text: "📖 Description", callback_data: `ce_f:desc:${item.id}` },
+              { text: "🖼 Poster", callback_data: `ce_f:poster:${item.id}` },
+            ],
+          ],
+        },
+      });
+      return new Response("OK", { status: 200 });
+    }
+
+    // Catalog Edit field picked
+    if (data.startsWith("ce_f:")) {
+      const [, field, catId] = data.split(":");
+      if (field === "cat") {
+        await tgCall(botToken, "editMessageText", {
+          chat_id: chatId,
+          message_id: messageId,
+          text: `📂 <b>Choose the new Category:</b>`,
+          parse_mode: "HTML",
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: "🎬 Movies", callback_data: `ce_c:movies:${catId}` },
+                { text: "📺 Series", callback_data: `ce_c:series:${catId}` },
+              ],
+              [
+                { text: "🧒 Kids Animation", callback_data: `ce_c:anim_kids:${catId}` },
+                { text: "🔞 Adult Animation", callback_data: `ce_c:anim_adult:${catId}` },
+              ],
+              [
+                { text: "🎞 Animated Series", callback_data: `ce_c:anim_series:${catId}` },
+                { text: "⚡ Anime", callback_data: `ce_c:anime:${catId}` },
+              ],
+            ],
+          },
+        });
+        return new Response("OK", { status: 200 });
+      }
+
+      await supabase.from("drafts").upsert(
+        {
+          chat_id: chatId,
+          step: `edit:${field}:${catId}`,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "chat_id" }
+      );
+
+      const prompts: Record<string, string> = {
+        title: "✏️ Send the new <b>Title</b> (or /cancel):",
+        subtitle: "✏️ Send the new <b>Subtitle / Season</b> (send <code>none</code> to clear, or /cancel):",
+        genres: "✏️ Send the new <b>Genres</b> (e.g. <code>Action, Science Fiction</code>, or /cancel):",
+        desc: "✏️ Send the new <b>Description</b> (or /cancel):",
+        poster: "🖼 Send the new <b>Poster Photo</b> now (or /cancel):",
+      };
+      await tgCall(botToken, "sendMessage", {
+        chat_id: chatId,
+        text: prompts[field] || "Send the new value (or /cancel):",
+        parse_mode: "HTML",
+      });
+      return new Response("OK", { status: 200 });
+    }
+
+    // Catalog Edit Category chosen directly
+    if (data.startsWith("ce_c:")) {
+      const [, pick, catId] = data.split(":");
+      let category = "movies";
+      let sub: string | null = null;
+      if (pick === "series") category = "series";
+      else if (pick === "movies") category = "movies";
+      else if (pick === "anim_kids") { category = "animation"; sub = "kids"; }
+      else if (pick === "anim_adult") { category = "animation"; sub = "adult"; }
+      else if (pick === "anim_series") { category = "animation"; sub = "series"; }
+      else if (pick === "anime") category = "anime";
+
+      const { data: updated, error } = await supabase
+        .from("catalog")
+        .update({ category, sub })
+        .eq("id", catId)
+        .select("title, category, sub")
+        .maybeSingle();
+
+      if (error || !updated) {
+        await tgCall(botToken, "sendMessage", { chat_id: chatId, text: "❌ Failed to update category." });
+        return new Response("OK", { status: 200 });
+      }
+      await tgCall(botToken, "editMessageText", {
+        chat_id: chatId,
+        message_id: messageId,
+        text: `✅ <b>${escapeHtml(updated.title)}</b> category updated to <b>${escapeHtml(updated.category)}${updated.sub ? " (" + escapeHtml(updated.sub) + ")" : ""}</b>`,
+        parse_mode: "HTML",
+      });
+      return new Response("OK", { status: 200 });
+    }
+
     // Category Pick in Poster Draft
     if (data.startsWith("cat_pick:")) {
       const pick = data.replace("cat_pick:", "");
@@ -376,7 +504,7 @@ serve(async (req) => {
 
     for (const item of items) {
       const itemMsg = `🎬 <b>${escapeHtml(item.title)}</b>\n` +
-        `Category: ${item.category}${item.sub ? " (" + item.sub + ")" : ""}\n` +
+        `Category: ${escapeHtml(item.category)}${item.sub ? " (" + escapeHtml(item.sub) + ")" : ""}\n` +
         `Trending: ${item.trending ? "Yes ⭐" : "No"}`;
 
       await tgCall(botToken, "sendMessage", {
@@ -386,6 +514,7 @@ serve(async (req) => {
         reply_markup: {
           inline_keyboard: [
             [
+              { text: "✏️ Edit", callback_data: `cat:edit:${item.id}` },
               { text: "⚡ Toggle Trending", callback_data: `cat:trend:${item.id}` },
               { text: "🗑 Remove", callback_data: `cat:rem:${item.id}` },
             ],
@@ -393,6 +522,112 @@ serve(async (req) => {
         },
       });
     }
+    return new Response("OK", { status: 200 });
+  }
+
+  // Cancel any active draft/edit
+  if (text === "/cancel") {
+    await supabase.from("drafts").delete().eq("chat_id", chatId);
+    await tgCall(botToken, "sendMessage", { chat_id: chatId, text: "✅ Active action cancelled." });
+    return new Response("OK", { status: 200 });
+  }
+
+  // Check if owner is currently in a /list Edit step
+  const { data: activeDraft } = await supabase.from("drafts").select("step").eq("chat_id", chatId).maybeSingle();
+  if (activeDraft?.step?.startsWith("edit:")) {
+    const [, field, catId] = activeDraft.step.split(":");
+    if (field === "poster") {
+      if (!msg.photo || msg.photo.length === 0) {
+        await tgCall(botToken, "sendMessage", { chat_id: chatId, text: "⚠️ Please send a photo for the new poster, or send /cancel." });
+        return new Response("OK", { status: 200 });
+      }
+      const highestPhoto = msg.photo[msg.photo.length - 1];
+      const fileInfo = await tgCall(botToken, "getFile", { file_id: highestPhoto.file_id });
+      if (!fileInfo?.result?.file_path) {
+        await tgCall(botToken, "sendMessage", { chat_id: chatId, text: "❌ Failed to fetch photo from Telegram." });
+        return new Response("OK", { status: 200 });
+      }
+      const downloadUrl = `https://api.telegram.org/file/bot${botToken}/${fileInfo.result.file_path}`;
+      const imgBlob = await (await fetch(downloadUrl)).blob();
+      const fileName = `${Date.now()}-edit-${catId.slice(0, 8)}.jpg`;
+      const { error: upErr } = await supabase.storage.from("posters").upload(fileName, imgBlob, {
+        contentType: "image/jpeg",
+        upsert: true,
+      });
+      if (upErr) {
+        await tgCall(botToken, "sendMessage", { chat_id: chatId, text: "❌ Failed to upload new poster." });
+        return new Response("OK", { status: 200 });
+      }
+      const { data: updated, error } = await supabase
+        .from("catalog")
+        .update({ image_path: fileName })
+        .eq("id", catId)
+        .select("title")
+        .maybeSingle();
+      await supabase.from("drafts").delete().eq("chat_id", chatId);
+      if (error || !updated) {
+        await tgCall(botToken, "sendMessage", { chat_id: chatId, text: "❌ Failed to update catalog poster." });
+        return new Response("OK", { status: 200 });
+      }
+      await tgCall(botToken, "sendMessage", {
+        chat_id: chatId,
+        text: `✅ Updated poster for <b>${escapeHtml(updated.title)}</b>!`,
+        parse_mode: "HTML",
+      });
+      return new Response("OK", { status: 200 });
+    }
+
+    if (!text) {
+      await tgCall(botToken, "sendMessage", { chat_id: chatId, text: "⚠️ Please send text for the new value, or /cancel." });
+      return new Response("OK", { status: 200 });
+    }
+
+    const updates: Record<string, unknown> = {};
+    if (field === "title") {
+      const clean = text.slice(0, 200).trim();
+      if (!clean) {
+        await tgCall(botToken, "sendMessage", { chat_id: chatId, text: "⚠️ Title cannot be empty." });
+        return new Response("OK", { status: 200 });
+      }
+      updates.title = clean;
+    } else if (field === "subtitle") {
+      updates.subtitle = text.toLowerCase() === "none" ? null : text.slice(0, 150).trim();
+    } else if (field === "genres") {
+      const gList = normalizeGenres(text);
+      if (!gList.length) {
+        await tgCall(botToken, "sendMessage", {
+          chat_id: chatId,
+          text: `⚠️ No valid genres recognized. Allowed genres: ${escapeHtml(CANONICAL_GENRES.join(", "))}`,
+          parse_mode: "HTML",
+        });
+        return new Response("OK", { status: 200 });
+      }
+      updates.genres = gList;
+    } else if (field === "desc") {
+      updates.description = text.slice(0, 2000).trim();
+    }
+
+    const { data: updated, error } = await supabase
+      .from("catalog")
+      .update(updates)
+      .eq("id", catId)
+      .select("title, subtitle, category, sub, genres, description")
+      .maybeSingle();
+    await supabase.from("drafts").delete().eq("chat_id", chatId);
+
+    if (error || !updated) {
+      await tgCall(botToken, "sendMessage", { chat_id: chatId, text: "❌ Failed to save changes." });
+      return new Response("OK", { status: 200 });
+    }
+
+    await tgCall(botToken, "sendMessage", {
+      chat_id: chatId,
+      text: `✅ <b>Updated ${escapeHtml(updated.title)}!</b>\n` +
+        `• <b>Subtitle:</b> ${escapeHtml(updated.subtitle || "None")}\n` +
+        `• <b>Category:</b> ${escapeHtml(updated.category)}${updated.sub ? " (" + escapeHtml(updated.sub) + ")" : ""}\n` +
+        `• <b>Genres:</b> ${escapeHtml((updated.genres || []).join(", "))}`,
+      parse_mode: "HTML",
+    });
     return new Response("OK", { status: 200 });
   }
 

@@ -196,6 +196,59 @@ form.grid{display:grid;gap:12px}
   </div>
 </div>
 
+<!-- EDIT CATALOG MODAL -->
+<div class="overlay" id="editCatOverlay">
+  <div class="modal-box" style="max-width:620px;max-height:92vh;overflow-y:auto">
+    <button class="modal-close" onclick="closeEditCat()">✕</button>
+    <h3>✏️ Edit Catalog Title</h3>
+    <form id="editCatF" class="grid">
+      <input type="hidden" id="ecId">
+      <label>Title * <input type="text" id="ecTitle" required></label>
+      <div class="g2">
+        <label>Category *
+          <select id="ecCat" required>
+            <option value="movies">Movie</option>
+            <option value="series">Series</option>
+            <option value="animation">Animation</option>
+            <option value="anime">Anime</option>
+          </select>
+        </label>
+        <label id="ecSubCatWrap" style="display:none">Animation Sub-Category *
+          <select id="ecSubCat">
+            <option value="" disabled>— Choose Sub-Category —</option>
+            <option value="kids">Kids Animation</option>
+            <option value="adult">Adult Animation</option>
+            <option value="series">Animated Series</option>
+          </select>
+        </label>
+      </div>
+      <label>Subtitle / Season / Quality <input type="text" id="ecSubtitle" placeholder="e.g. Season 2 Episode 1, HD, CAM"></label>
+      <div>
+        <div style="font-weight:600;font-size:14px;margin-bottom:5px">Genres * <small style="color:var(--mut);font-weight:400">(select one or more)</small></div>
+        <div class="gen-grid" id="ecGenBox"></div>
+      </div>
+      <label>Description <textarea id="ecDesc" placeholder="Short synopsis..."></textarea></label>
+      <div class="g2">
+        <label>New Poster Image URL (optional)
+          <input type="url" id="ecImgUrl" placeholder="Leave blank to keep current poster">
+        </label>
+        <label>Or Upload New Poster File (optional)
+          <input type="file" id="ecImgFile" accept="image/*" style="padding:7px">
+        </label>
+      </div>
+      <div style="display:flex;gap:18px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="ecTrend" style="width:auto"> 🔥 Trending</label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="ecActive" style="width:auto"> ✅ Active (visible on site)</label>
+      </div>
+      <div class="errmsg" id="ecMsg"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn alt" type="button" onclick="closeEditCat()">Cancel</button>
+        <button class="btn cyan" type="submit">💾 Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- ADD ADMIN MODAL (Owner only) -->
 <div class="overlay" id="addAdminOverlay">
   <div class="modal-box">
@@ -847,18 +900,25 @@ function renderCatalog(items) {
       fire.style.cssText = "position:absolute;top:7px;left:7px";
       thumb.appendChild(fire);
     }
+    if (c.active === false) {
+      const hid = mk("span", "tag cancelled", "Hidden");
+      hid.style.cssText = "position:absolute;top:7px;right:7px;font-size:10px";
+      thumb.appendChild(hid);
+    }
     const body = mk("div", "cat-body");
     const titleEl = mk("div", "cat-title", c.title);
     const catLabel = ((c.category || "").toUpperCase()) + (c.sub ? ` (${c.sub.toUpperCase()})` : "");
     const subtEl = mk("div", "cat-subt", c.subtitle ? `${c.subtitle} · ${catLabel}` : catLabel);
     const genEl = mk("div", "cat-genres", (c.genres || []).join(", "));
     const acts = mk("div", "cat-actions");
+    const btnEdit = mk("button", "btn alt sm", "✏️ Edit");
+    btnEdit.addEventListener("click", () => openEditCat(c));
     const btnTr = mk("button", "btn " + (c.trending ? "alt" : "cyan") + " sm", c.trending ? "Untrend" : "🔥 Trend");
     btnTr.style.flex = "1";
     btnTr.addEventListener("click", () => window.toggleTrend(c.id, !c.trending));
     const btnDel = mk("button", "btn danger sm", "🗑");
     btnDel.addEventListener("click", () => del("catalog", c.id, loadCatalog));
-    acts.append(btnTr, btnDel);
+    acts.append(btnEdit, btnTr, btnDel);
     body.append(titleEl, subtEl, genEl, acts);
     el.append(thumb, body);
     box.appendChild(el);
@@ -936,6 +996,102 @@ $("#addCatF").addEventListener("submit", async e => {
   });
   if (r?.ok) { toast("Published!"); $("#addCatF").reset(); buildGenreCheckboxes("cGenBox"); syncCatSubUI(); checkSeriesSuggestion(); loadCatalog(); loadStats(); }
   else toast(r?.error || "Failed", true);
+});
+
+// Edit Catalog Modal logic
+function syncEditCatSubUI() {
+  const isAnim = $("#ecCat").value === "animation";
+  $("#ecSubCatWrap").style.display = isAnim ? "grid" : "none";
+  $("#ecSubCat").required = isAnim;
+  if (!isAnim) $("#ecSubCat").value = "";
+}
+$("#ecCat").addEventListener("change", syncEditCatSubUI);
+
+function openEditCat(item) {
+  $("#ecId").value = item.id;
+  $("#ecTitle").value = item.title || "";
+  $("#ecCat").value = (item.category || "movies").toLowerCase();
+  syncEditCatSubUI();
+  if ($("#ecCat").value === "animation") {
+    $("#ecSubCat").value = (item.sub || "adult").toLowerCase();
+  }
+  $("#ecSubtitle").value = item.subtitle || "";
+  buildGenreCheckboxes("ecGenBox", Array.isArray(item.genres) ? item.genres : []);
+  $("#ecDesc").value = item.description || "";
+  $("#ecImgUrl").value = "";
+  $("#ecImgFile").value = "";
+  $("#ecTrend").checked = Boolean(item.trending);
+  $("#ecActive").checked = item.active !== false;
+  $("#ecMsg").textContent = "";
+  $("#editCatOverlay").style.display = "grid";
+}
+function closeEditCat() {
+  $("#editCatOverlay").style.display = "none";
+  $("#editCatF").reset();
+  $("#ecMsg").textContent = "";
+}
+$("#editCatOverlay").addEventListener("click", e => { if (e.target === $("#editCatOverlay")) closeEditCat(); });
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Could not read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
+$("#editCatF").addEventListener("submit", async e => {
+  e.preventDefault();
+  $("#ecMsg").textContent = "";
+  const id = $("#ecId").value;
+  const cat = $("#ecCat").value;
+  const sub = cat === "animation" ? $("#ecSubCat").value : null;
+  const genres = [...$$("#ecGenBox input:checked")].map(x => x.value);
+  if (!cat) { $("#ecMsg").textContent = "Please choose a Category"; return; }
+  if (cat === "animation" && !sub) { $("#ecMsg").textContent = "Please choose an Animation Sub-Category"; return; }
+  if (!genres.length) { $("#ecMsg").textContent = "Please select at least one Genre"; return; }
+
+  const payload = {
+    id,
+    title: $("#ecTitle").value.trim(),
+    subtitle: $("#ecSubtitle").value.trim(),
+    category: cat,
+    sub,
+    genres,
+    description: $("#ecDesc").value.trim(),
+    trending: $("#ecTrend").checked,
+    active: $("#ecActive").checked,
+  };
+
+  const file = $("#ecImgFile").files?.[0];
+  const newUrl = $("#ecImgUrl").value.trim();
+  if (file) {
+    if (file.size > 5 * 1024 * 1024) {
+      $("#ecMsg").textContent = "Poster file exceeds 5 MB limit";
+      return;
+    }
+    try {
+      payload.image_base64 = await readFileAsDataUrl(file);
+    } catch {
+      $("#ecMsg").textContent = "Failed to read poster file";
+      return;
+    }
+  } else if (newUrl) {
+    payload.image_url = newUrl;
+  }
+
+  toast("Saving changes...");
+  const r = await api("/catalog", "PATCH", payload);
+  if (r?.ok) {
+    toast("Title updated!");
+    closeEditCat();
+    loadCatalog();
+    loadStats();
+  } else {
+    $("#ecMsg").textContent = r?.error || "Failed to save changes";
+    toast(r?.error || "Failed to save changes", true);
+  }
 });
 
 // ── BOT ───────────────────────────────────────────────────────────────────
