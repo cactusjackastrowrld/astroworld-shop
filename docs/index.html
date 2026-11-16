@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' https: data:; connect-src 'self' https://iqdzokybhggiilzscnxv.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self';">
 <title>Astro World Cyber</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪐</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -598,8 +599,19 @@ setTimeout(() => { $("#ld").classList.add("out"); }, matchMedia("(prefers-reduce
     const who = mine ? "me" : "admin";
     const row = document.createElement("div");
     row.className = "cw-row " + who + (lastWho === who + (m.sender_name || "") ? " same" : "");
-    row.innerHTML = '<div class="cw-who">' + (mine ? "You" : "✦ " + esc(m.sender_name || "Astro World")) + "</div>" +
-      '<div class="cw-bub">' + esc(m.text) + "</div>" + (pending ? '<div class="cw-tick">Sending…</div>' : "");
+    const whoEl = document.createElement("div");
+    whoEl.className = "cw-who";
+    whoEl.textContent = mine ? "You" : "✦ " + (m.sender_name || "Astro World");
+    const bubEl = document.createElement("div");
+    bubEl.className = "cw-bub";
+    bubEl.textContent = String(m.text ?? "");
+    row.append(whoEl, bubEl);
+    if (pending) {
+      const tickEl = document.createElement("div");
+      tickEl.className = "cw-tick";
+      tickEl.textContent = "Sending…";
+      row.appendChild(tickEl);
+    }
     el("cw-msgs").appendChild(row);
     lastWho = who + (m.sender_name || "");
     scrollDown();

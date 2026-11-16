@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' https: data:; connect-src 'self' https://iqdzokybhggiilzscnxv.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self';">
 <title>Astro World Admin Portal</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪐</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -463,6 +464,8 @@ let convPollTimer = null;
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 const esc = s => String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+const mk = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x !== undefined) e.textContent = String(x ?? ""); return e; };
+const emptyRow = (box, cols, text) => { const tr = mk("tr"), td = mk("td", "", text); td.colSpan = cols; td.style.cssText = "text-align:center;color:var(--mut)"; tr.appendChild(td); box.appendChild(tr); };
 
 function toast(msg, err = false) {
   const t = $("#toast");
@@ -621,12 +624,16 @@ async function loadAdminsOverview() {
   box.replaceChildren();
   r.data.forEach(a => {
     const isOnline = a.last_seen && (Date.now() - new Date(a.last_seen).getTime()) < 5 * 60 * 1000;
-    const d = document.createElement("div");
+    const d = mk("div");
     d.style.cssText = "display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--card);border-radius:10px;border:1px solid var(--line)";
-    d.innerHTML = `<span class="online-dot ${isOnline ? 'online' : ''}"></span>
-      <span style="font-weight:600">${esc(a.display_name)}</span>
-      <span style="color:var(--mut);font-size:12px">@${esc(a.username)}</span>
-      <span class="tag ${a.blocked ? 'blocked' : 'confirmed'}" style="margin-left:auto">${a.blocked ? '🔴 Blocked' : esc(a.role)}</span>`;
+    const dot = mk("span", "online-dot" + (isOnline ? " online" : ""));
+    const nm = mk("span", "", a.display_name);
+    nm.style.fontWeight = "600";
+    const us = mk("span", "", "@" + a.username);
+    us.style.cssText = "color:var(--mut);font-size:12px";
+    const tg = mk("span", "tag " + (a.blocked ? "blocked" : "confirmed"), a.blocked ? "🔴 Blocked" : a.role);
+    tg.style.marginLeft = "auto";
+    d.append(dot, nm, us, tg);
     box.appendChild(d);
   });
 }
@@ -637,25 +644,59 @@ async function loadBookings() {
   if (!r?.ok) return;
   const box = $("#bkRows");
   box.replaceChildren();
-  if (!r.data.length) { box.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--mut)">No bookings yet.</td></tr>'; return; }
+  if (!r.data.length) { emptyRow(box, 7, "No bookings yet."); return; }
   r.data.forEach(b => {
-    const tr = document.createElement("tr");
+    const tr = mk("tr");
     const phone = b.phone?.replace(/[^0-9]/g, "") || "";
     const wa = phone ? `https://wa.me/${phone.startsWith("0") ? "254" + phone.slice(1) : phone}?text=${encodeURIComponent(`Hi ${b.name}, this is Astro World Cyber regarding your ${b.service} booking on ${b.date} at ${b.time}.`)}` : "";
     const isDone = b.status === "completed" || b.status === "done";
-    tr.innerHTML = `
-      <td><b>${esc(b.date)}</b><br><small style="color:var(--mut)">${esc(b.time)}</small></td>
-      <td><b>${esc(b.name)}</b></td>
-      <td>${wa ? `<a href="${esc(wa)}" target="_blank" rel="noopener" class="btn wa sm">💬 ${esc(b.phone)}</a>` : esc(b.phone || "—")}</td>
-      <td>${esc(b.service)}</td>
-      <td style="color:var(--mut);max-width:180px"><small>${esc(b.notes || "—")}</small></td>
-      <td><select onchange="patchBooking('${esc(b.id)}',this.value)" style="padding:4px 7px;font-size:12px">
-        <option value="new" ${b.status==="new"?"selected":""}>🟡 New</option>
-        <option value="confirmed" ${b.status==="confirmed"?"selected":""}>🔵 Confirmed</option>
-        <option value="completed" ${isDone?"selected":""}>🟢 Done</option>
-        <option value="cancelled" ${b.status==="cancelled"?"selected":""}>🔴 Cancelled</option>
-      </select></td>
-      <td><button class="btn danger sm" onclick="del('bookings','${esc(b.id)}',loadBookings)">🗑</button></td>`;
+
+    const tdDate = mk("td");
+    const bDate = mk("b", "", b.date);
+    const smTime = mk("small", "", b.time);
+    smTime.style.color = "var(--mut)";
+    tdDate.append(bDate, mk("br"), smTime);
+
+    const tdName = mk("td");
+    tdName.appendChild(mk("b", "", b.name));
+
+    const tdPhone = mk("td");
+    if (wa) {
+      const aWa = mk("a", "btn wa sm", "💬 " + b.phone);
+      aWa.href = wa; aWa.target = "_blank"; aWa.rel = "noopener";
+      tdPhone.appendChild(aWa);
+    } else {
+      tdPhone.textContent = b.phone || "—";
+    }
+
+    const tdSvc = mk("td", "", b.service);
+
+    const tdNotes = mk("td");
+    tdNotes.style.cssText = "color:var(--mut);max-width:180px";
+    tdNotes.appendChild(mk("small", "", b.notes || "—"));
+
+    const tdSt = mk("td");
+    const sel = mk("select");
+    sel.style.cssText = "padding:4px 7px;font-size:12px";
+    [
+      ["new", "🟡 New", b.status === "new"],
+      ["confirmed", "🔵 Confirmed", b.status === "confirmed"],
+      ["completed", "🟢 Done", isDone],
+      ["cancelled", "🔴 Cancelled", b.status === "cancelled"],
+    ].forEach(([val, lbl, on]) => {
+      const opt = mk("option", "", lbl);
+      opt.value = val; opt.selected = on;
+      sel.appendChild(opt);
+    });
+    sel.addEventListener("change", () => window.patchBooking(b.id, sel.value));
+    tdSt.appendChild(sel);
+
+    const tdAct = mk("td");
+    const btnDel = mk("button", "btn danger sm", "🗑");
+    btnDel.addEventListener("click", () => del("bookings", b.id, loadBookings));
+    tdAct.appendChild(btnDel);
+
+    tr.append(tdDate, tdName, tdPhone, tdSvc, tdNotes, tdSt, tdAct);
     box.appendChild(tr);
   });
 }
@@ -667,24 +708,55 @@ async function loadRequests() {
   if (!r?.ok) return;
   const box = $("#reqRows");
   box.replaceChildren();
-  if (!r.data.length) { box.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--mut)">No requests yet.</td></tr>'; return; }
+  if (!r.data.length) { emptyRow(box, 7, "No requests yet."); return; }
   r.data.forEach(b => {
-    const tr = document.createElement("tr");
+    const tr = mk("tr");
     const d = new Date(b.created_at).toLocaleDateString();
     const phone = b.phone?.replace(/[^0-9]/g,"") || "";
     const wa = phone ? `https://wa.me/${phone.startsWith("0")?"254"+phone.slice(1):phone}?text=${encodeURIComponent(`Hi ${b.name}, your requested title "${b.title}" is ready at Astro World Cyber!`)}` : "";
     const isDone = b.status === "completed" || b.status === "done";
-    tr.innerHTML = `
-      <td>${esc(d)}</td><td><b>${esc(b.name)}</b></td>
-      <td>${wa ? `<a href="${esc(wa)}" target="_blank" rel="noopener" class="btn wa sm">💬 ${esc(b.phone)}</a>` : esc(b.phone||"—")}</td>
-      <td><b style="color:var(--cyan)">${esc(b.title)}</b></td>
-      <td><span class="tag new">${esc(b.kind||"movie")}</span></td>
-      <td><select onchange="patchReq('${esc(b.id)}',this.value)" style="padding:4px 7px;font-size:12px">
-        <option value="new" ${b.status==="new"?"selected":""}>🟡 New</option>
-        <option value="ready" ${b.status==="ready"?"selected":""}>🟢 Ready</option>
-        <option value="completed" ${isDone?"selected":""}>✅ Done</option>
-      </select></td>
-      <td><button class="btn danger sm" onclick="del('requests','${esc(b.id)}',loadRequests)">🗑</button></td>`;
+
+    const tdDate = mk("td", "", d);
+    const tdName = mk("td"); tdName.appendChild(mk("b", "", b.name));
+
+    const tdPhone = mk("td");
+    if (wa) {
+      const aWa = mk("a", "btn wa sm", "💬 " + b.phone);
+      aWa.href = wa; aWa.target = "_blank"; aWa.rel = "noopener";
+      tdPhone.appendChild(aWa);
+    } else {
+      tdPhone.textContent = b.phone || "—";
+    }
+
+    const tdTitle = mk("td");
+    const bTitle = mk("b", "", b.title);
+    bTitle.style.color = "var(--cyan)";
+    tdTitle.appendChild(bTitle);
+
+    const tdKind = mk("td");
+    tdKind.appendChild(mk("span", "tag new", b.kind || "movie"));
+
+    const tdSt = mk("td");
+    const sel = mk("select");
+    sel.style.cssText = "padding:4px 7px;font-size:12px";
+    [
+      ["new", "🟡 New", b.status === "new"],
+      ["ready", "🟢 Ready", b.status === "ready"],
+      ["completed", "✅ Done", isDone],
+    ].forEach(([val, lbl, on]) => {
+      const opt = mk("option", "", lbl);
+      opt.value = val; opt.selected = on;
+      sel.appendChild(opt);
+    });
+    sel.addEventListener("change", () => window.patchReq(b.id, sel.value));
+    tdSt.appendChild(sel);
+
+    const tdAct = mk("td");
+    const btnDel = mk("button", "btn danger sm", "🗑");
+    btnDel.addEventListener("click", () => del("requests", b.id, loadRequests));
+    tdAct.appendChild(btnDel);
+
+    tr.append(tdDate, tdName, tdPhone, tdTitle, tdKind, tdSt, tdAct);
     box.appendChild(tr);
   });
 }
@@ -696,23 +768,30 @@ async function loadReviews() {
   if (!r?.ok) return;
   const box = $("#rvRows");
   box.replaceChildren();
-  if (!r.data.length) { box.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--mut)">No reviews yet.</td></tr>'; return; }
+  if (!r.data.length) { emptyRow(box, 6, "No reviews yet."); return; }
   r.data.forEach(rv => {
-    const tr = document.createElement("tr");
+    const tr = mk("tr");
     const stars = "★".repeat(rv.rating) + "☆".repeat(Math.max(0, 5-rv.rating));
     const st = rv.status || (rv.approved ? "approved" : "pending");
     const isLive = st === "approved";
     const label = isLive ? "Live" : st === "rejected" ? "Rejected" : "Pending";
-    tr.innerHTML = `
-      <td>${esc(new Date(rv.created_at).toLocaleDateString())}</td>
-      <td><b>${esc(rv.name)}</b></td>
-      <td style="color:var(--yel);letter-spacing:2px">${stars}</td>
-      <td style="color:var(--mut);max-width:280px">${esc(rv.body)}</td>
-      <td><span class="tag ${esc(st)}">${label}</span></td>
-      <td style="white-space:nowrap">
-        <button class="btn ${isLive?"alt":"grn"} sm" onclick="toggleRv('${esc(rv.id)}','${isLive?"pending":"approved"}')">${isLive?"Hide":"✅ Approve"}</button>
-        <button class="btn danger sm" onclick="del('reviews','${esc(rv.id)}',loadReviews)">🗑</button>
-      </td>`;
+
+    const tdDate = mk("td", "", new Date(rv.created_at).toLocaleDateString());
+    const tdName = mk("td"); tdName.appendChild(mk("b", "", rv.name));
+    const tdStars = mk("td", "", stars); tdStars.style.cssText = "color:var(--yel);letter-spacing:2px";
+    const tdBody = mk("td", "", rv.body); tdBody.style.cssText = "color:var(--mut);max-width:280px";
+    const tdSt = mk("td"); tdSt.appendChild(mk("span", "tag " + st, label));
+
+    const tdAct = mk("td");
+    tdAct.style.whiteSpace = "nowrap";
+    const btnTog = mk("button", "btn " + (isLive ? "alt" : "grn") + " sm", isLive ? "Hide" : "✅ Approve");
+    btnTog.addEventListener("click", () => window.toggleRv(rv.id, isLive ? "pending" : "approved"));
+    const btnDel = mk("button", "btn danger sm", "🗑");
+    btnDel.style.marginLeft = "4px";
+    btnDel.addEventListener("click", () => del("reviews", rv.id, loadReviews));
+    tdAct.append(btnTog, btnDel);
+
+    tr.append(tdDate, tdName, tdStars, tdBody, tdSt, tdAct);
     box.appendChild(tr);
   });
 }
@@ -730,22 +809,37 @@ async function loadCatalog() {
 function renderCatalog(items) {
   const box = $("#catList");
   box.replaceChildren();
-  if (!items.length) { box.innerHTML = '<div style="color:var(--mut)">No titles.</div>'; return; }
+  if (!items.length) { const emp = mk("div", "", "No titles."); emp.style.color = "var(--mut)"; box.appendChild(emp); return; }
   items.forEach(c => {
-    const el = document.createElement("div");
-    el.className = "cat-item";
-    el.innerHTML = `
-      <div class="cat-thumb">${c.img ? `<img src="${esc(c.img)}" alt="${esc(c.title)}" loading="lazy">` : `<div style="padding:40px 0;text-align:center;color:var(--mut)">No image</div>`}
-        ${c.trending ? '<span class="badge admin" style="position:absolute;top:7px;left:7px">🔥</span>' : ''}</div>
-      <div class="cat-body">
-        <div class="cat-title">${esc(c.title)}</div>
-        <div class="cat-subt">${esc(c.subtitle || c.category.toUpperCase())}</div>
-        <div class="cat-genres">${esc((c.genres||[]).join(", "))}</div>
-        <div class="cat-actions">
-          <button class="btn ${c.trending?"alt":"cyan"} sm" style="flex:1" onclick="toggleTrend('${esc(c.id)}',${!c.trending})">${c.trending?"Untrend":"🔥 Trend"}</button>
-          <button class="btn danger sm" onclick="del('catalog','${esc(c.id)}',loadCatalog)">🗑</button>
-        </div>
-      </div>`;
+    const el = mk("div", "cat-item");
+    const thumb = mk("div", "cat-thumb");
+    if (c.img) {
+      const img = mk("img");
+      img.src = c.img; img.alt = c.title || ""; img.loading = "lazy";
+      thumb.appendChild(img);
+    } else {
+      const noImg = mk("div", "", "No image");
+      noImg.style.cssText = "padding:40px 0;text-align:center;color:var(--mut)";
+      thumb.appendChild(noImg);
+    }
+    if (c.trending) {
+      const fire = mk("span", "badge admin", "🔥");
+      fire.style.cssText = "position:absolute;top:7px;left:7px";
+      thumb.appendChild(fire);
+    }
+    const body = mk("div", "cat-body");
+    const titleEl = mk("div", "cat-title", c.title);
+    const subtEl = mk("div", "cat-subt", c.subtitle || (c.category || "").toUpperCase());
+    const genEl = mk("div", "cat-genres", (c.genres || []).join(", "));
+    const acts = mk("div", "cat-actions");
+    const btnTr = mk("button", "btn " + (c.trending ? "alt" : "cyan") + " sm", c.trending ? "Untrend" : "🔥 Trend");
+    btnTr.style.flex = "1";
+    btnTr.addEventListener("click", () => window.toggleTrend(c.id, !c.trending));
+    const btnDel = mk("button", "btn danger sm", "🗑");
+    btnDel.addEventListener("click", () => del("catalog", c.id, loadCatalog));
+    acts.append(btnTr, btnDel);
+    body.append(titleEl, subtEl, genEl, acts);
+    el.append(thumb, body);
     box.appendChild(el);
   });
 }
@@ -833,27 +927,36 @@ function renderConversations() {
     c.status === chatFilter);
   box.replaceChildren();
   if (!list.length) {
-    box.innerHTML = `<div style="padding:16px;color:var(--mut);font-size:13px">${CONVS.length ? "Nothing here." : "No chats yet. When a customer uses the chat on the website, it shows up here."}</div>`;
+    const emp = mk("div", "", CONVS.length ? "Nothing here." : "No chats yet. When a customer uses the chat on the website, it shows up here.");
+    emp.style.cssText = "padding:16px;color:var(--mut);font-size:13px";
+    box.appendChild(emp);
     return;
   }
   list.forEach(c => {
-    const el = document.createElement("div");
-    el.className = "conv-item" + (c.id === activeConvId ? " active" : "") + (c.status === "closed" ? " closed" : "") + (c.needs_reply ? " waiting" : "");
+    const el = mk("div", "conv-item" + (c.id === activeConvId ? " active" : "") + (c.status === "closed" ? " closed" : "") + (c.needs_reply ? " waiting" : ""));
     const prev = c.last_text ? (c.last_sender === "admin" ? "You: " : "") + c.last_text : "No messages yet";
-    el.innerHTML = `
-      <div class="conv-avatar">${initial(c.customer_name)}</div>
-      <div class="conv-body">
-        <div class="conv-top">
-          <span class="cname">${esc(c.customer_name)}</span>
-          ${c.needs_reply ? '<span class="cdot" title="Waiting for reply"></span>' : ""}
-          <span class="ctime">${shortTime(c.updated_at || c.created_at)}</span>
-        </div>
-        <div class="cprev">${esc(prev)}</div>
-        <div style="margin-top:4px"><span class="tag ${c.status === "open" ? "confirmed" : "cancelled"}" style="font-size:10px;padding:1px 7px">${c.status}</span></div>
-      </div>
-      <button class="cdel" title="Delete chat">🗑</button>`;
+    const av = mk("div", "conv-avatar", (String(c.customer_name || "?").trim()[0] || "?").toUpperCase());
+    const body = mk("div", "conv-body");
+    const top = mk("div", "conv-top");
+    top.appendChild(mk("span", "cname", c.customer_name));
+    if (c.needs_reply) {
+      const dot = mk("span", "cdot");
+      dot.title = "Waiting for reply";
+      top.appendChild(dot);
+    }
+    top.appendChild(mk("span", "ctime", shortTime(c.updated_at || c.created_at)));
+    const prevEl = mk("div", "cprev", prev);
+    const stWrap = mk("div");
+    stWrap.style.marginTop = "4px";
+    const stTag = mk("span", "tag " + (c.status === "open" ? "confirmed" : "cancelled"), c.status);
+    stTag.style.cssText = "font-size:10px;padding:1px 7px";
+    stWrap.appendChild(stTag);
+    body.append(top, prevEl, stWrap);
+    const btnDel = mk("button", "cdel", "🗑");
+    btnDel.title = "Delete chat";
     el.addEventListener("click", () => openConversation(c));
-    el.querySelector(".cdel").addEventListener("click", e => { e.stopPropagation(); deleteConversation(c.id); });
+    btnDel.addEventListener("click", e => { e.stopPropagation(); deleteConversation(c.id); });
+    el.append(av, body, btnDel);
     box.appendChild(el);
   });
 }
@@ -920,18 +1023,16 @@ function appendMsg(m, opts = {}) {
   const box = $("#chatMsgs");
   const day = new Date(m.created_at).toDateString();
   if (day !== lastMsgDay) {
-    const d = document.createElement("div");
-    d.className = "chat-day";
-    d.textContent = day === new Date().toDateString() ? "Today" : new Date(m.created_at).toLocaleDateString();
+    const d = mk("div", "chat-day", day === new Date().toDateString() ? "Today" : new Date(m.created_at).toLocaleDateString());
     box.appendChild(d);
     lastMsgDay = day; lastMsgSender = null;
   }
   const isAdmin = m.sender === "admin";
-  const row = document.createElement("div");
-  row.className = `msg-row ${isAdmin ? "admin" : "customer"}` + (lastMsgSender === m.sender + m.sender_name ? " same" : "") + (opts.pending ? " pending" : "");
-  row.innerHTML = `<div class="msg-meta">${esc(m.sender_name)} · ${new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
-    <div class="msg-bubble ${isAdmin ? "admin" : "customer"}">${esc(m.text)}</div>
-    ${opts.pending ? '<div class="msg-tick">Sending…</div>' : ""}`;
+  const row = mk("div", `msg-row ${isAdmin ? "admin" : "customer"}` + (lastMsgSender === m.sender + m.sender_name ? " same" : "") + (opts.pending ? " pending" : ""));
+  const meta = mk("div", "msg-meta", `${m.sender_name || ""} · ${new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`);
+  const bub = mk("div", `msg-bubble ${isAdmin ? "admin" : "customer"}`, m.text);
+  row.append(meta, bub);
+  if (opts.pending) row.appendChild(mk("div", "msg-tick", "Sending…"));
   box.appendChild(row);
   lastMsgSender = m.sender + m.sender_name;
   return row;
@@ -1052,29 +1153,40 @@ async function loadAdmins() {
   r.data.forEach(a => {
     const isOnline = a.last_seen && (Date.now() - new Date(a.last_seen).getTime()) < 5 * 60 * 1000;
     const isSelf = a.id === ME?.id;
-    const row = document.createElement("div");
-    row.className = "admin-row" + (a.blocked ? " blocked-row" : "");
-    row.innerHTML = `
-      <span class="online-dot ${isOnline?"online":""}"></span>
-      <div class="admin-info">
-        <div style="font-weight:700">${esc(a.display_name)} ${isSelf ? '<span class="badge admin" style="font-size:10px;padding:2px 7px">You</span>' : ''}</div>
-        <div style="font-size:12px;color:var(--mut)">@${esc(a.username)} · ${esc(a.role)}</div>
-        ${a.last_seen ? `<div style="font-size:11px;color:var(--mut)">Last seen: ${esc(new Date(a.last_seen).toLocaleString())}</div>` : ''}
-      </div>
-      <div class="admin-actions">
-        ${isOwner && !isSelf ? `
-          <button class="btn cyan sm" data-adm-act="reset-password">🔑 Reset Pwd</button>
-          ${a.blocked
-            ? `<button class="btn grn sm" data-adm-act="unblock">✅ Unblock</button>`
-            : `<button class="btn yel sm" data-adm-act="block">🔒 Block</button>`}
-          <button class="btn alt sm" data-adm-act="force-logout">⏏ Logout</button>
-          <button class="btn danger sm" data-adm-act="delete">🗑 Delete</button>
-        ` : ""}
-        <span class="tag ${a.blocked?"blocked":isOnline?"confirmed":"pending"}">${a.blocked?"Blocked":isOnline?"Online":"Offline"}</span>
-      </div>`;
-    row.querySelectorAll("[data-adm-act]").forEach(btn => {
-      btn.addEventListener("click", () => window.adminAction(btn.dataset.admAct, a.id, a.display_name));
-    });
+    const row = mk("div", "admin-row" + (a.blocked ? " blocked-row" : ""));
+    const dot = mk("span", "online-dot" + (isOnline ? " online" : ""));
+    const info = mk("div", "admin-info");
+    const nameLine = mk("div");
+    nameLine.style.fontWeight = "700";
+    nameLine.appendChild(document.createTextNode(a.display_name + " "));
+    if (isSelf) {
+      const youBadge = mk("span", "badge admin", "You");
+      youBadge.style.cssText = "font-size:10px;padding:2px 7px";
+      nameLine.appendChild(youBadge);
+    }
+    const roleLine = mk("div", "", `@${a.username} · ${a.role}`);
+    roleLine.style.cssText = "font-size:12px;color:var(--mut)";
+    info.append(nameLine, roleLine);
+    if (a.last_seen) {
+      const seenLine = mk("div", "", "Last seen: " + new Date(a.last_seen).toLocaleString());
+      seenLine.style.cssText = "font-size:11px;color:var(--mut)";
+      info.appendChild(seenLine);
+    }
+    const acts = mk("div", "admin-actions");
+    if (isOwner && !isSelf) {
+      [
+        ["reset-password", "btn cyan sm", "🔑 Reset Pwd"],
+        [a.blocked ? "unblock" : "block", a.blocked ? "btn grn sm" : "btn yel sm", a.blocked ? "✅ Unblock" : "🔒 Block"],
+        ["force-logout", "btn alt sm", "⏏ Logout"],
+        ["delete", "btn danger sm", "🗑 Delete"],
+      ].forEach(([act, cls, lbl]) => {
+        const btn = mk("button", cls, lbl);
+        btn.addEventListener("click", () => window.adminAction(act, a.id, a.display_name));
+        acts.appendChild(btn);
+      });
+    }
+    acts.appendChild(mk("span", "tag " + (a.blocked ? "blocked" : isOnline ? "confirmed" : "pending"), a.blocked ? "Blocked" : isOnline ? "Online" : "Offline"));
+    row.append(dot, info, acts);
     box.appendChild(row);
   });
   loadAdminsOverview();
