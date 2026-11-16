@@ -155,6 +155,10 @@ form.grid{display:grid;gap:12px}
 .cat-subt{font-size:12px;color:var(--yel)}
 .cat-genres{font-size:11px;color:var(--mut)}
 .cat-actions{display:flex;gap:5px;margin-top:auto;padding-top:8px}
+.gen-grid{display:flex;flex-wrap:wrap;gap:6px;padding:10px;background:#060412;border:1px solid var(--line);border-radius:10px;max-height:190px;overflow-y:auto}
+.gen-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:99px;background:#140c34;border:1px solid var(--line);font:600 12px Outfit;color:var(--mut);cursor:pointer;user-select:none;transition:all .15s}
+.gen-pill:has(input:checked){background:linear-gradient(90deg,var(--pink),var(--pur));color:#fff;border-color:transparent}
+.gen-pill input{width:auto;margin:0;accent-color:var(--cyan)}
 
 /* login */
 #login-modal{position:fixed;inset:0;background:#05030fcc;backdrop-filter:blur(16px);z-index:200;display:none;place-items:center;padding:16px}
@@ -341,7 +345,10 @@ form.grid{display:grid;gap:12px}
           <div id="cSeriesHint" style="display:none;font-size:12px;color:var(--yel);background:#ffd23f18;border:1px solid #ffd23f55;padding:7px 10px;border-radius:8px;cursor:pointer">
             💡 Subtitle mentions Season/Episode — tap here to set Category to <b>Series</b>
           </div>
-          <label>Genres (comma separated) <input type="text" id="cGen" placeholder="Action, Thriller" value="Action"></label>
+          <div>
+            <div style="font-weight:600;font-size:14px;margin-bottom:5px">Genres * <small style="color:var(--mut);font-weight:400">(select one or more)</small></div>
+            <div class="gen-grid" id="cGenBox"></div>
+          </div>
           <label>Poster Image URL * <input type="url" id="cImg" placeholder="https://..." required></label>
           <label>Description <textarea id="cDesc" placeholder="Short synopsis..."></textarea></label>
           <div style="display:flex;gap:16px;flex-wrap:wrap">
@@ -863,7 +870,31 @@ $("#catQ").addEventListener("input", e => {
 });
 window.toggleTrend = async (id,trending) => { const r = await api("/catalog","PATCH",{id,trending}); if(r?.ok){toast("Updated");loadCatalog();} };
 
-// Publish form: category/sub-category toggle + Season/Episode series suggestion
+// Publish form: category/sub-category toggle + Season/Episode series suggestion + 28-genre checkboxes
+const CANONICAL_GENRES = [
+  "Action", "Action & Adventure", "Adventure", "Animation", "Comedy", "Crime",
+  "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Kids",
+  "Music", "Mystery", "News", "Reality", "Romance", "Sci-Fi & Fantasy",
+  "Science Fiction", "Soap", "Talk", "Thriller", "TV Movie", "War",
+  "War & Politics", "Western", "Spy"
+];
+function buildGenreCheckboxes(containerId, selected = []) {
+  const box = document.getElementById(containerId);
+  if (!box) return;
+  box.replaceChildren();
+  const selSet = new Set(selected);
+  CANONICAL_GENRES.forEach(g => {
+    const lbl = mk("label", "gen-pill");
+    const inp = mk("input");
+    inp.type = "checkbox";
+    inp.value = g;
+    inp.checked = selSet.has(g);
+    lbl.append(inp, document.createTextNode(g));
+    box.appendChild(lbl);
+  });
+}
+buildGenreCheckboxes("cGenBox");
+
 function syncCatSubUI() {
   const isAnim = $("#cCat").value === "animation";
   $("#cSubCatWrap").style.display = isAnim ? "grid" : "none";
@@ -893,15 +924,17 @@ $("#addCatF").addEventListener("submit", async e => {
   e.preventDefault();
   const cat = $("#cCat").value;
   const sub = cat === "animation" ? $("#cSubCat").value : null;
+  const genres = [...$$("#cGenBox input:checked")].map(x => x.value);
   if (!cat) { toast("Please choose a Category", true); return; }
   if (cat === "animation" && !sub) { toast("Please choose an Animation Sub-Category", true); return; }
+  if (!genres.length) { toast("Please select at least one Genre", true); return; }
   toast("Publishing...");
   const r = await api("/catalog","POST",{
     title:$("#cTitle").value, subtitle:$("#cSubtitle").value, category:cat, sub,
-    genres:$("#cGen").value, image_url:$("#cImg").value, description:$("#cDesc").value,
+    genres, image_url:$("#cImg").value, description:$("#cDesc").value,
     trending:$("#cTrend").checked, announce_telegram:$("#cTg").checked
   });
-  if (r?.ok) { toast("Published!"); $("#addCatF").reset(); syncCatSubUI(); checkSeriesSuggestion(); loadCatalog(); loadStats(); }
+  if (r?.ok) { toast("Published!"); $("#addCatF").reset(); buildGenreCheckboxes("cGenBox"); syncCatSubUI(); checkSeriesSuggestion(); loadCatalog(); loadStats(); }
   else toast(r?.error || "Failed", true);
 });
 

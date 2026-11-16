@@ -197,6 +197,38 @@ function escTg(s: string) {
   return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+const CANONICAL_GENRES = [
+  "Action", "Action & Adventure", "Adventure", "Animation", "Comedy", "Crime",
+  "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Kids",
+  "Music", "Mystery", "News", "Reality", "Romance", "Sci-Fi & Fantasy",
+  "Science Fiction", "Soap", "Talk", "Thriller", "TV Movie", "War",
+  "War & Politics", "Western", "Spy"
+];
+
+const GENRE_TOKEN_REGEX = /\b(science\s+fiction\s*(?:&|and)\s*fantasy|sci(?:-|\s)?fi\s*(?:&|and)\s*fantasy|action\s*(?:&|and)\s*adventure|war\s*(?:&|and)\s*politics|science\s+fiction|sci(?:-|\s)?fi|scifi|tv(?:-|\s)+movie|documentary|animation|adventure|thriller|animated|children|cartoons|cartoon|western|romance|mystery|history|reality|fantasy|comedy|horror|family|action|crime|drama|music|kids|news|soap|talk|war|spy|docu|doc)\b/gi;
+
+function normalizeGenres(input: unknown): string[] {
+  const raw = Array.isArray(input) ? input.join(", ") : String(input || "");
+  const cleaned = raw.replace(/[,/|]+/g, " , ");
+  const result = new Set<string>();
+  for (const match of cleaned.matchAll(GENRE_TOKEN_REGEX)) {
+    const tok = match[1].toLowerCase().replace(/\s+/g, " ").trim();
+    if (tok.includes("fantasy") && (tok.includes("sci") || tok.includes("science"))) result.add("Sci-Fi & Fantasy");
+    else if (tok.startsWith("action") && tok.includes("adventure")) result.add("Action & Adventure");
+    else if (tok.startsWith("war") && tok.includes("politics")) result.add("War & Politics");
+    else if (tok === "science fiction" || tok === "sci-fi" || tok === "sci fi" || tok === "scifi") result.add("Science Fiction");
+    else if (tok.startsWith("tv") && tok.endsWith("movie")) result.add("TV Movie");
+    else if (tok === "animated" || tok === "cartoon" || tok === "cartoons") result.add("Animation");
+    else if (tok === "children") result.add("Kids");
+    else if (tok === "doc" || tok === "docu") result.add("Documentary");
+    else {
+      const canonical = CANONICAL_GENRES.find(g => g.toLowerCase() === tok);
+      if (canonical) result.add(canonical);
+    }
+  }
+  return Array.from(result);
+}
+
 // Normalize category and sub-category to canonical values
 function normalizeCategoryAndSub(rawCat: unknown, rawSub: unknown): { category: string | null; sub: string | null } {
   const c = String(rawCat || "").trim().toLowerCase();
@@ -596,13 +628,16 @@ serve(async (req) => {
         if (category === "animation" && !sub) {
           return json({ ok: false, error: "Please select an Animation sub-category (kids, adult, or series)" }, 400);
         }
-        const genresList = Array.isArray(genres) ? genres : (genres || "").split(",").map((g: string) => g.trim()).filter(Boolean);
+        const genresList = normalizeGenres(genres);
+        if (!genresList.length) {
+          return json({ ok: false, error: "Please select at least one valid genre" }, 400);
+        }
         const { data, error } = await db.from("catalog").insert({
           title: String(title).trim(),
           subtitle: (subtitle || "").trim() || null,
           category,
           sub,
-          genres: genresList.length ? genresList : ["Action"],
+          genres: genresList,
           description: (description || "").trim(),
           image_path: (image_url || "").trim() || null,
           trending: Boolean(trending),

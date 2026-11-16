@@ -1,75 +1,36 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
-// Canonical genres and common categories
+// Canonical 28-genre list shared across bot, admin, and customer site
 const CANONICAL_GENRES = [
-  "Action", "Adventure", "Animation", "Comedy", "Crime", "Documentary",
-  "Drama", "Family", "Fantasy", "History", "Horror", "Kids", "Music",
-  "Mystery", "News", "Reality", "Romance", "Sci-fi", "Soap", "Spy",
-  "Talk", "Thriller", "War", "Western"
+  "Action", "Action & Adventure", "Adventure", "Animation", "Comedy", "Crime",
+  "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Kids",
+  "Music", "Mystery", "News", "Reality", "Romance", "Sci-Fi & Fantasy",
+  "Science Fiction", "Soap", "Talk", "Thriller", "TV Movie", "War",
+  "War & Politics", "Western", "Spy"
 ];
 
-// Normalize genre names and aliases (including combined genres like "Sci-Fi & Fantasy")
-function normalizeGenres(rawGenres: string): string[] {
-  // First split by commas or slashes
-  const chunks = rawGenres.split(/[,/]/).map(g => g.trim()).filter(Boolean);
+const GENRE_TOKEN_REGEX = /\b(science\s+fiction\s*(?:&|and)\s*fantasy|sci(?:-|\s)?fi\s*(?:&|and)\s*fantasy|action\s*(?:&|and)\s*adventure|war\s*(?:&|and)\s*politics|science\s+fiction|sci(?:-|\s)?fi|scifi|tv(?:-|\s)+movie|documentary|animation|adventure|thriller|animated|children|cartoons|cartoon|western|romance|mystery|history|reality|fantasy|comedy|horror|family|action|crime|drama|music|kids|news|soap|talk|war|spy|docu|doc)\b/gi;
+
+function normalizeGenres(input: unknown): string[] {
+  const raw = Array.isArray(input) ? input.join(", ") : String(input || "");
+  const cleaned = raw.replace(/[,/|]+/g, " , ");
   const result = new Set<string>();
-
-  for (const chunk of chunks) {
-    const lower = chunk.toLowerCase();
-
-    // Check common combined pairs like "Action & Adventure", "Sci-Fi & Fantasy", "War & Politics"
-    if (lower === "action & adventure" || lower === "action and adventure") {
-      result.add("Action");
-      result.add("Adventure");
-      continue;
-    }
-    if (lower.includes("sci-fi") && lower.includes("fantasy")) {
-      result.add("Sci-fi");
-      result.add("Fantasy");
-      continue;
-    }
-    if (lower.includes("war") && lower.includes("politic")) {
-      result.add("War");
-      continue;
-    }
-    if (lower === "tv movie" || lower === "tv-movie") {
-      result.add("Drama");
-      continue;
-    }
-    if (lower === "science fiction" || lower === "sci fi" || lower === "scifi") {
-      result.add("Sci-fi");
-      continue;
-    }
-    if (lower === "cartoon" || lower === "animated") {
-      result.add("Animation");
-      continue;
-    }
-    if (lower === "children") {
-      result.add("Kids");
-      continue;
-    }
-    if (lower === "doc" || lower === "docu") {
-      result.add("Documentary");
-      continue;
-    }
-    if (lower === "romcom") {
-      result.add("Romance");
-      result.add("Comedy");
-      continue;
-    }
-
-    // Direct match against canonical list (case-insensitive)
-    const matched = CANONICAL_GENRES.find(c => c.toLowerCase() === lower);
-    if (matched) {
-      result.add(matched);
-    } else {
-      // Clean fallback: capitalize first letter of each word
-      const words = lower.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-      result.add(words);
+  for (const match of cleaned.matchAll(GENRE_TOKEN_REGEX)) {
+    const tok = match[1].toLowerCase().replace(/\s+/g, " ").trim();
+    if (tok.includes("fantasy") && (tok.includes("sci") || tok.includes("science"))) result.add("Sci-Fi & Fantasy");
+    else if (tok.startsWith("action") && tok.includes("adventure")) result.add("Action & Adventure");
+    else if (tok.startsWith("war") && tok.includes("politics")) result.add("War & Politics");
+    else if (tok === "science fiction" || tok === "sci-fi" || tok === "sci fi" || tok === "scifi") result.add("Science Fiction");
+    else if (tok.startsWith("tv") && tok.endsWith("movie")) result.add("TV Movie");
+    else if (tok === "animated" || tok === "cartoon" || tok === "cartoons") result.add("Animation");
+    else if (tok === "children") result.add("Kids");
+    else if (tok === "doc" || tok === "docu") result.add("Documentary");
+    else {
+      const canonical = CANONICAL_GENRES.find(g => g.toLowerCase() === tok);
+      if (canonical) result.add(canonical);
     }
   }
-
   return Array.from(result);
 }
 

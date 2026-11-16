@@ -125,7 +125,7 @@ footer .logo{font-size:22px;margin-bottom:6px}
     <input id="q" type="search" placeholder="Search titles or genres" aria-label="Search titles or genres" style="max-width:420px">
     <div class="chips" id="chips"></div>
     <div id="cat"></div>
-    <div class="empty" id="none" hidden>Nothing matches. Request it below and we will find it.</div>
+    <div class="empty" id="none" hidden>No titles here yet. Request one below.</div>
     <div class="two" style="margin-top:20px">
       <form class="card" id="reqF">
         <h3>Request a movie or series</h3>
@@ -234,6 +234,39 @@ SERVICES.forEach((s, i) => {
   $("#bkS").appendChild(el("option", "", s[0]));
 });
 const SUBS = { kids: "Kids animation", adult: "Adult animation", series: "Animated series" };
+const CANONICAL_GENRES = [
+  "Action", "Action & Adventure", "Adventure", "Animation", "Comedy", "Crime",
+  "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Kids",
+  "Music", "Mystery", "News", "Reality", "Romance", "Sci-Fi & Fantasy",
+  "Science Fiction", "Soap", "Talk", "Thriller", "TV Movie", "War",
+  "War & Politics", "Western", "Spy"
+];
+const TOP_GENRES = [
+  "Action", "Comedy", "Drama", "Horror", "Science Fiction",
+  "Thriller", "Animation", "Adventure", "Romance", "Crime"
+];
+const GENRE_TOKEN_REGEX = /\b(science\s+fiction\s*(?:&|and)\s*fantasy|sci(?:-|\s)?fi\s*(?:&|and)\s*fantasy|action\s*(?:&|and)\s*adventure|war\s*(?:&|and)\s*politics|science\s+fiction|sci(?:-|\s)?fi|scifi|tv(?:-|\s)+movie|documentary|animation|adventure|thriller|animated|children|cartoons|cartoon|western|romance|mystery|history|reality|fantasy|comedy|horror|family|action|crime|drama|music|kids|news|soap|talk|war|spy|docu|doc)\b/gi;
+function normalizeGenres(input) {
+  const raw = Array.isArray(input) ? input.join(", ") : String(input || "");
+  const cleaned = raw.replace(/[,/|]+/g, " , ");
+  const result = new Set();
+  for (const match of cleaned.matchAll(GENRE_TOKEN_REGEX)) {
+    const tok = match[1].toLowerCase().replace(/\s+/g, " ").trim();
+    if (tok.includes("fantasy") && (tok.includes("sci") || tok.includes("science"))) result.add("Sci-Fi & Fantasy");
+    else if (tok.startsWith("action") && tok.includes("adventure")) result.add("Action & Adventure");
+    else if (tok.startsWith("war") && tok.includes("politics")) result.add("War & Politics");
+    else if (tok === "science fiction" || tok === "sci-fi" || tok === "sci fi" || tok === "scifi") result.add("Science Fiction");
+    else if (tok.startsWith("tv") && tok.endsWith("movie")) result.add("TV Movie");
+    else if (tok === "animated" || tok === "cartoon" || tok === "cartoons") result.add("Animation");
+    else if (tok === "children") result.add("Kids");
+    else if (tok === "doc" || tok === "docu") result.add("Documentary");
+    else {
+      const canonical = CANONICAL_GENRES.find(g => g.toLowerCase() === tok);
+      if (canonical) result.add(canonical);
+    }
+  }
+  return Array.from(result);
+}
 function normItem(i) {
   const c = String(i.cat || "").trim().toLowerCase();
   if (["series", "tv", "show", "shows", "tv series", "tv-series"].includes(c)) i.cat = "series";
@@ -250,9 +283,10 @@ function normItem(i) {
   } else {
     i.sub = null;
   }
+  i.g = normalizeGenres(i.g);
   return i;
 }
-let tim = null, G = "All";
+let tim = null, G = "All", showMoreGenres = false;
 function card(i) {
   const c = el("article", "pc"), p = el("div", "poster");
   p.style.background = "linear-gradient(155deg,#8b5cff,#05030f)";
@@ -304,17 +338,27 @@ function render() {
 function buildGenres() {
   const box = $("#chips");
   box.replaceChildren();
-  const list = ["All"].concat([...new Set(CATALOG.flatMap(i => i.g))].sort());
-  list.forEach(g => {
+  const extraGenres = CANONICAL_GENRES.filter(g => !TOP_GENRES.includes(g));
+  const visible = ["All", ...TOP_GENRES, ...(showMoreGenres ? extraGenres : [])];
+  visible.forEach(g => {
     const b = el("button", "chip" + (g === G ? " on" : ""), g);
     b.type = "button";
     b.addEventListener("click", () => {
       G = g;
-      document.querySelectorAll(".chip").forEach(c => c.classList.toggle("on", c === b));
+      buildGenres();
       render();
     });
     box.appendChild(b);
   });
+  const toggleBtn = el("button", "chip", showMoreGenres ? "Less genres ▲" : `More genres (+${extraGenres.length}) ▼`);
+  toggleBtn.type = "button";
+  toggleBtn.style.borderColor = "var(--cyan)";
+  toggleBtn.style.color = "var(--cyan)";
+  toggleBtn.addEventListener("click", () => {
+    showMoreGenres = !showMoreGenres;
+    buildGenres();
+  });
+  box.appendChild(toggleBtn);
 }
 function renderReviews() {
   const box = $("#rvL");
