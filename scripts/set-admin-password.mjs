@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// Owner-controlled local CLI tool to safely set or reset an admin password on project iqdzokybhggiilzscnxv.
-// Usage: node scripts/set-admin-password.mjs <username> [--force-change]
-// Reads the new password from an interactive hidden prompt (never passed on the command line or stored in git).
+// Owner-controlled local CLI tool to safely create or reset an admin account on project iqdzokybhggiilzscnxv.
+// Usage: node scripts/set-admin-password.mjs <username> [--role=Owner] [--name="Shop Owner"] [--force-change]
+// Reads the password from an interactive hidden prompt (never passed on the command line or stored in git).
 
-import { webcrypto, randomBytes, pbkdf2Sync, createHash } from "node:crypto";
+import { randomBytes, pbkdf2Sync, createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import readline from "node:readline";
 
@@ -15,9 +15,11 @@ const LEAKED_SEED_HASH = "db812db08007152375fbf084d0664856b2633f7d0594fa2599a31e
 
 const username = (process.argv[2] || "").trim().toLowerCase();
 const forceChange = process.argv.includes("--force-change");
+const roleArg = process.argv.find((a) => a.startsWith("--role="))?.split("=")[1];
+const nameArg = process.argv.find((a) => a.startsWith("--name="))?.split("=")[1];
 
-if (!username) {
-  console.error("Usage: node scripts/set-admin-password.mjs <username> [--force-change]");
+if (!username || username.startsWith("-")) {
+  console.error('Usage: node scripts/set-admin-password.mjs <username> [--role=Owner] [--name="Shop Owner"] [--force-change]');
   process.exit(1);
 }
 
@@ -68,10 +70,45 @@ if (!srk) {
 }
 
 const nowIso = new Date().toISOString();
-const res = await fetch(
-  `https://${PROJECT_REF}.supabase.co/rest/v1/admins?username=eq.${encodeURIComponent(username)}`,
-  {
-    method: "PATCH",
+
+// Check if account already exists
+const checkRes = await fetch(
+  `https://${PROJECT_REF}.supabase.co/rest/v1/admins?username=eq.${encodeURIComponent(username)}&select=id,username,display_name,role`,
+  { headers: { apikey: srk, Authorization: `Bearer ${srk}` } }
+);
+const existing = await checkRes.json();
+
+if (Array.isArray(existing) && existing.length > 0) {
+  const res = await fetch(
+    `https://${PROJECT_REF}.supabase.co/rest/v1/admins?username=eq.${encodeURIComponent(username)}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: srk,
+        Authorization: `Bearer ${srk}`,
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify({
+        password_hash: formattedHash,
+        must_change_password: forceChange,
+        session_invalidated_at: nowIso,
+      }),
+    }
+  );
+  const updated = await res.json();
+  if (!res.ok || !Array.isArray(updated) || updated.length === 0) {
+    console.error("Error: Could not update admin account.");
+    process.exit(1);
+  }
+  console.log(
+    `✅ Password updated for @${updated[0].username} (${updated[0].role}) with PBKDF2-SHA256 (${PBKDF2_ITERATIONS} iterations) and all prior sessions invalidated.`
+  );
+} else {
+  const role = roleArg || (username === "owner" ? "Owner" : "Staff");
+  const displayName = nameArg || (username === "owner" ? "Shop Owner" : username);
+  const res = await fetch(`https://${PROJECT_REF}.supabase.co/rest/v1/admins`, {
+    method: "POST",
     headers: {
       "Content-Type": "application/json",
       apikey: srk,
@@ -79,19 +116,21 @@ const res = await fetch(
       Prefer: "return=representation",
     },
     body: JSON.stringify({
+      username,
+      display_name: displayName,
+      role,
       password_hash: formattedHash,
+      blocked: false,
       must_change_password: forceChange,
       session_invalidated_at: nowIso,
     }),
+  });
+  const created = await res.json();
+  if (!res.ok || !Array.isArray(created) || created.length === 0) {
+    console.error("Error: Could not create admin account.");
+    process.exit(1);
   }
-);
-
-const updated = await res.json();
-if (!res.ok || !Array.isArray(updated) || updated.length === 0) {
-  console.error("Error: Could not update admin account (check that username exists).");
-  process.exit(1);
+  console.log(
+    `✅ Created admin account @${created[0].username} (${created[0].role}) with PBKDF2-SHA256 (${PBKDF2_ITERATIONS} iterations).`
+  );
 }
-
-console.log(
-  `✅ Password updated for @${updated[0].username} (${updated[0].role}) with PBKDF2-SHA256 (${PBKDF2_ITERATIONS} iterations) and all prior sessions invalidated.`
-);
